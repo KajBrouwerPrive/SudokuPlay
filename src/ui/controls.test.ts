@@ -71,7 +71,7 @@ describe("cellViews", () => {
 
   it("marks givens and nothing else without a selection", () => {
     const views = cellViews(game, null);
-    expect(views[0]).toEqual({ value: 5, notes: [], given: true, selected: false, peer: false, sameDigit: false, conflict: false });
+    expect(views[0]).toEqual({ value: 5, notes: [], given: true, selected: false, peer: false, sameDigit: false, highlightedNote: null, conflict: false });
     expect(views[2]).toMatchObject({ value: null, given: false });
   });
 
@@ -89,6 +89,17 @@ describe("cellViews", () => {
       [...game.values.keys()].filter((cell) => game.values[cell] === 3),
     );
     expect(views[0].sameDigit).toBe(false);
+  });
+
+  it("lights up notes of the highlighted digit, armed or selected", () => {
+    let state = applyAction(game, { type: ActionType.ToggleNote, cell: 2, digit: 4 }).state;
+    state = applyAction(state, { type: ActionType.ToggleNote, cell: 2, digit: 1 }).state;
+    expect(cellViews(state, null, 4)[2].highlightedNote).toBe(4);
+    expect(cellViews(state, null, 7)[2].highlightedNote).toBeNull();
+    expect(cellViews(state, null)[2].highlightedNote).toBeNull();
+    // Cell 1 holds a given 3; selecting it lights up the 3 notes too.
+    state = applyAction(state, { type: ActionType.ToggleNote, cell: 2, digit: 3 }).state;
+    expect(cellViews(state, 1)[2].highlightedNote).toBe(3);
   });
 
   it("shows notes in empty cells and marks conflicts", () => {

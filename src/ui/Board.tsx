@@ -126,7 +126,11 @@ export function Board({ cells, onPress, fxLayerRef, overlay }: BoardProps) {
                   ) : (
                     <span className="notes" aria-hidden="true">
                       {DIGITS.map((digit) => (
-                        <span key={digit} data-note-digit={view.notes.includes(digit) ? digit : undefined}>
+                        <span
+                          key={digit}
+                          data-note-digit={view.notes.includes(digit) ? digit : undefined}
+                          className={view.highlightedNote === digit ? "notes__digit--highlighted" : undefined}
+                        >
                           {view.notes.includes(digit) ? digit : ""}
                         </span>
                       ))}

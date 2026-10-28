@@ -137,6 +137,8 @@ export interface CellView {
   peer: boolean;
   /** Holds the armed digit, or else the same digit as the selected cell. */
   sameDigit: boolean;
+  /** That same digit when this empty cell has it as a note, so the note can light up. */
+  highlightedNote: Digit | null;
   conflict: boolean;
 }
 
@@ -146,13 +148,15 @@ export function cellViews(state: GameState, selected: number | null, armedDigit:
   const highlightedDigit = armedDigit ?? (selected === null ? EMPTY : state.values[selected]);
   return Array.from({ length: CELL_COUNT }, (_, cell) => {
     const value = state.values[cell];
+    const notes = value === EMPTY ? candidateDigits(state.notes[cell]) : [];
     return {
       value: value === EMPTY ? null : (value as Digit),
-      notes: value === EMPTY ? candidateDigits(state.notes[cell]) : [],
+      notes,
       given: state.givens[cell] !== EMPTY,
       selected: cell === selected,
       peer: peers.has(cell),
       sameDigit: highlightedDigit !== EMPTY && value === highlightedDigit,
+      highlightedNote: notes.find((note) => note === highlightedDigit) ?? null,
       conflict: conflicts.has(cell),
     };
   });
