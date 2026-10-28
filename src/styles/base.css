@@ -20,7 +20,9 @@ body {
 }
 
 .app {
-  max-width: 520px;
+  max-width: var(--app-width);
+  /* Lets the pad size its type to the app width (cqi units). */
+  container-type: inline-size;
   min-height: 100dvh;
   margin: 0 auto;
   padding: 16px 16px max(16px, env(safe-area-inset-bottom));
@@ -124,6 +126,12 @@ button:disabled {
   margin: 0;
   font-size: 0.8rem;
   color: var(--muted);
+}
+
+@media (min-width: 700px) and (min-height: 700px) {
+  .app {
+    max-width: var(--app-width-desktop);
+  }
 }
 
 /* Touch screens have no keyboard: hide the shortcuts. */

@@ -44,6 +44,9 @@
   --radius-tile: 9px;
   --radius-key: 14px;
   --radius-pill: 999px;
+  --app-width: 520px;
+  /* On large screens the app grows with the window height, so board and pad still fit without scrolling. */
+  --app-width-desktop: clamp(520px, calc(100dvh - 260px), 760px);
   --board-padding: 8px;
   --box-gap: 6px;
   --cell-gap: 3px;

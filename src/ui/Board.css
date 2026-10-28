@@ -2,6 +2,8 @@
    Look: a peach tray holding nine box islands of rounded tiles; each tile stands on a darker edge. */
 .board-frame {
   position: relative;
+  /* Digits size with the board (cqi units), so they grow on a desktop and shrink on a phone. */
+  container-type: inline-size;
 }
 
 .board {
@@ -46,7 +48,7 @@
   box-shadow: none;
   background: var(--tile);
   font-family: var(--font-digits);
-  font-size: clamp(1.1rem, 5.4vw, 1.75rem);
+  font-size: clamp(1.1rem, 6.2cqi, 2.6rem);
   font-weight: 500;
   line-height: 1;
   color: var(--entered);
@@ -104,7 +106,7 @@
   padding: 2px;
   place-items: center;
   font-family: var(--font-ui);
-  font-size: clamp(0.5rem, 2.1vw, 0.72rem);
+  font-size: clamp(0.5rem, 2.4cqi, 1.05rem);
   font-weight: 700;
   color: var(--muted);
 }
@@ -159,14 +161,14 @@
 
 .fx-ghost--value {
   font-family: var(--font-digits);
-  font-size: clamp(1.1rem, 5.4vw, 1.75rem);
+  font-size: clamp(1.1rem, 6.2cqi, 2.6rem);
   font-weight: 500;
   color: var(--entered);
 }
 
 .fx-ghost--note {
   font-family: var(--font-ui);
-  font-size: clamp(0.5rem, 2.1vw, 0.72rem);
+  font-size: clamp(0.5rem, 2.4cqi, 1.05rem);
   font-weight: 700;
   color: var(--muted);
 }

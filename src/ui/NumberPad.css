@@ -18,7 +18,7 @@
   gap: 2px;
   padding: 8px 4px 6px;
   border-radius: var(--radius-key);
-  font-size: 0.75rem;
+  font-size: clamp(0.75rem, 2.2cqi, 0.95rem);
   color: var(--muted);
 }
 
@@ -80,7 +80,7 @@
 
 .pad__value {
   font-family: var(--font-digits);
-  font-size: clamp(1.25rem, 5.6vw, 1.6rem);
+  font-size: clamp(1.25rem, 6.4cqi, 2.1rem);
   font-weight: 600;
   line-height: 1;
   color: var(--entered);
@@ -89,13 +89,13 @@
 /* In notes mode the digits shrink a little, like pencil marks. */
 .pad--notes .pad__value {
   font-family: var(--font-ui);
-  font-size: clamp(1rem, 4.4vw, 1.25rem);
+  font-size: clamp(1rem, 5cqi, 1.6rem);
   font-weight: 800;
   color: var(--muted);
 }
 
 .pad__remaining {
-  font-size: 0.7rem;
+  font-size: clamp(0.7rem, 2cqi, 0.85rem);
   font-weight: 700;
   color: var(--muted);
 }
