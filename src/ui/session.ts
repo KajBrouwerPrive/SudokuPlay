@@ -13,6 +13,13 @@ export interface LoggedEvent {
   event: GameEvent;
 }
 
+/** The events of one transition, which the animation layer plays together. */
+export interface EventBatch {
+  /** The id of the batch's first event, so every batch has its own id. */
+  id: number;
+  events: GameEvent[];
+}
+
 export interface Session {
   game: GameState;
   selected: number | null;
@@ -20,6 +27,8 @@ export interface Session {
   /** Newest first. */
   log: LoggedEvent[];
   nextEventId: number;
+  /** The latest transition that produced events. */
+  lastBatch: EventBatch | null;
 }
 
 export const SessionActionType = {
@@ -34,17 +43,19 @@ export type SessionAction =
   | { type: typeof SessionActionType.NewGame; puzzle: Puzzle };
 
 export function createSession(puzzle: Puzzle): Session {
-  return { game: createGame(puzzle), selected: null, notesMode: false, log: [], nextEventId: 1 };
+  return { game: createGame(puzzle), selected: null, notesMode: false, log: [], nextEventId: 1, lastBatch: null };
 }
 
 function play(session: Session, action: GameAction): Session {
   const { state, events } = applyAction(session.game, action);
+  if (events.length === 0) return state === session.game ? session : { ...session, game: state };
   const logged = events.map((event, index) => ({ id: session.nextEventId + index, event })).reverse();
   return {
     ...session,
     game: state,
     log: [...logged, ...session.log].slice(0, EVENT_LOG_LIMIT),
     nextEventId: session.nextEventId + events.length,
+    lastBatch: { id: session.nextEventId, events },
   };
 }
 

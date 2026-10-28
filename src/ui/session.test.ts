@@ -29,9 +29,18 @@ describe("sessionReducer", () => {
       [2, GameEventType.ConflictDetected],
       [1, GameEventType.CellPlaced],
     ]);
+    expect(session.lastBatch).toEqual({ id: 1, events: session.log.map(({ event }) => event).reverse() });
     session = command(session, { type: CommandType.Undo });
     expect(session.game.values[2]).toBe(EMPTY);
     expect(session.log[0].event.type).toBe(GameEventType.MoveUndone);
+    expect(session.lastBatch?.id).toBe(4);
+  });
+
+  it("keeps the last batch when an action produces no events", () => {
+    let session = select(createSession(PUZZLE), 2);
+    session = command(session, { type: CommandType.Input, digit: 4, asNote: false });
+    const batch = session.lastBatch;
+    expect(command(session, { type: CommandType.Input, digit: 4, asNote: false }).lastBatch).toBe(batch);
   });
 
   it("caps the log", () => {

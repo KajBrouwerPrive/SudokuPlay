@@ -1,9 +1,11 @@
-// Playground (phase 4): a plain board to play and test the engine by hand. No animations yet.
+// The game screen. Rules live in the engine, motion in src/animation; this only wires them together.
 import { useEffect, useMemo, useReducer } from "react";
+import { Control } from "./animation/choreograph";
+import { useAnimations, usePrefersReducedMotion } from "./animation/useAnimations";
 import { DIFFICULTIES, Difficulty, GameStatus, createPuzzle, remainingByDigit, type Digit } from "./engine";
 import { Board } from "./ui/Board";
 import { CommandType, cellViews, keyToCommand, type Command } from "./ui/controls";
-import { EventLog } from "./ui/EventLog";
+import { DevPanel } from "./ui/DevPanel";
 import { NumberPad } from "./ui/NumberPad";
 import { SessionActionType, createSession, sessionReducer } from "./ui/session";
 
@@ -39,7 +41,9 @@ function rememberInUrl(difficulty: Difficulty, seed: number): void {
 
 export function App() {
   const [session, dispatch] = useReducer(sessionReducer, undefined, () => createSession(createPuzzle(initialPuzzleOptions())));
-  const { game, selected, notesMode, log } = session;
+  const { game, selected, notesMode, log, lastBatch } = session;
+  const reducedMotion = usePrefersReducedMotion();
+  const { rootRef, fxLayerRef, playEvents } = useAnimations(lastBatch, reducedMotion);
   const cells = useMemo(() => cellViews(game, selected), [game, selected]);
   const remaining = useMemo(() => remainingByDigit(game), [game]);
 
@@ -62,7 +66,7 @@ export function App() {
     dispatch({ type: SessionActionType.NewGame, puzzle: createPuzzle({ difficulty, seed: randomSeed() }) });
 
   return (
-    <main className="app">
+    <main className="app" ref={rootRef}>
       <header className="toolbar">
         <h1>SudokuPlay</h1>
         <label>
@@ -81,11 +85,11 @@ export function App() {
       </header>
 
       <p className="status" role="status">
-        Fouten: {game.mistakes} · Seed {game.seed}
+        Fouten: <span className="status__mistakes" data-control={Control.Mistakes}>{game.mistakes}</span> · Seed {game.seed}
         {game.status === GameStatus.Solved && <strong> · Opgelost!</strong>}
       </p>
 
-      <Board cells={cells} onSelect={(cell) => dispatch({ type: SessionActionType.Select, cell })} />
+      <Board cells={cells} fxLayerRef={fxLayerRef} onSelect={(cell) => dispatch({ type: SessionActionType.Select, cell })} />
 
       <NumberPad
         remaining={remaining}
@@ -99,7 +103,7 @@ export function App() {
 
       <p className="hint">Toetsen: 1-9 plaatsen, Shift+cijfer notitie, N notitiemodus, pijltjes bewegen, Backspace wissen, Ctrl+Z / Ctrl+Y.</p>
 
-      <EventLog log={log} />
+      {import.meta.env.DEV && <DevPanel game={game} selected={selected} log={log} playEvents={playEvents} />}
     </main>
   );
 }

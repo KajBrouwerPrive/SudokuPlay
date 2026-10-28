@@ -234,3 +234,71 @@ button:disabled {
   color: var(--accent);
   font-weight: 600;
 }
+
+/* Animation support: the fx layer holds temporary ghosts; animated parts need to be transformable boxes. */
+.board-frame {
+  position: relative;
+}
+
+.fx-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.cell {
+  position: relative;
+}
+
+.cell__value,
+.notes > span,
+.status__mistakes {
+  display: inline-block;
+}
+
+.status__mistakes {
+  min-width: 1ch;
+  text-align: center;
+}
+
+.fx-ghost {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  will-change: transform, opacity;
+}
+
+.fx-ghost--value {
+  font-size: clamp(1rem, 5vw, 1.6rem);
+  color: var(--entered);
+}
+
+.fx-ghost--note {
+  font-size: clamp(0.5rem, 2vw, 0.7rem);
+  color: var(--muted);
+}
+
+.fx-ring {
+  position: absolute;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+}
+
+.dev-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.dev-panel__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0;
+}
+
+.dev-panel__buttons button {
+  padding: 4px 8px;
+}
