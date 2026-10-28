@@ -5,7 +5,8 @@ import type { CellView } from "./controls";
 
 interface BoardProps {
   cells: CellView[];
-  onSelect: (cell: number) => void;
+  /** A click on a cell; `secondary` is the right mouse button. */
+  onPress: (cell: number, secondary: boolean) => void;
   /** Layer over the board for temporary animation elements; React never renders into it. */
   fxLayerRef: Ref<HTMLDivElement>;
   /** Shown over the board, such as the solved card. */
@@ -75,7 +76,7 @@ function useSelectionCursor(selected: number) {
   return { boardRef, cursorRef };
 }
 
-export function Board({ cells, onSelect, fxLayerRef, overlay }: BoardProps) {
+export function Board({ cells, onPress, fxLayerRef, overlay }: BoardProps) {
   const selected = cells.findIndex((view) => view.selected);
   const { boardRef, cursorRef } = useSelectionCursor(selected);
   return (
@@ -92,7 +93,12 @@ export function Board({ cells, onSelect, fxLayerRef, overlay }: BoardProps) {
                   data-cell={cell}
                   className={cellClassName(view)}
                   aria-label={cellLabel(cell, view)}
-                  onClick={() => onSelect(cell)}
+                  onClick={() => onPress(cell, false)}
+                  onContextMenu={(event) => {
+                    // The right button notes the armed digit instead of opening the browser menu.
+                    event.preventDefault();
+                    onPress(cell, true);
+                  }}
                 >
                   {view.value ? (
                     // Keyed by digit so a new digit gets a fresh element to animate.

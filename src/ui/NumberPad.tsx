@@ -9,6 +9,8 @@ const DONE_MARK = "✓";
 interface NumberPadProps {
   remaining: Record<Digit, number>;
   notesMode: boolean;
+  /** The digit picked for placing by clicking cells; its key stays lit. */
+  armedDigit: Digit | null;
   onDigit: (digit: Digit) => void;
   onErase: () => void;
   onUndo: () => void;
@@ -16,7 +18,7 @@ interface NumberPadProps {
   onToggleNotes: () => void;
 }
 
-export function NumberPad({ remaining, notesMode, onDigit, onErase, onUndo, onRedo, onToggleNotes }: NumberPadProps) {
+export function NumberPad({ remaining, notesMode, armedDigit, onDigit, onErase, onUndo, onRedo, onToggleNotes }: NumberPadProps) {
   return (
     <div className={notesMode ? "pad pad--notes" : "pad"}>
       <div className="pad__tools">
@@ -46,6 +48,7 @@ export function NumberPad({ remaining, notesMode, onDigit, onErase, onUndo, onRe
             data-pad={digit}
             className={remaining[digit] === 0 ? "pad__digit pad__digit--done" : "pad__digit"}
             disabled={remaining[digit] === 0}
+            aria-pressed={armedDigit === digit}
             aria-label={remaining[digit] === 0 ? `${digit}, klaar` : `${digit}, nog ${remaining[digit]}`}
             onClick={() => onDigit(digit)}
           >

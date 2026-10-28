@@ -100,6 +100,18 @@
   color: var(--muted);
 }
 
+/* The armed digit stays lit and pressed in, until it is clicked again or Escape is pressed. */
+.pad__digit[aria-pressed="true"] {
+  background: var(--accent);
+  box-shadow: 0 1px 0 var(--key-edge);
+  translate: 0 calc(var(--key-edge-width) - 1px);
+}
+
+.pad__digit[aria-pressed="true"] .pad__value,
+.pad__digit[aria-pressed="true"] .pad__remaining {
+  color: var(--accent-contrast);
+}
+
 /* A finished digit sinks flat and shows a check. */
 .pad__digit--done {
   background: var(--key-done);

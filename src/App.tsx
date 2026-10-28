@@ -41,10 +41,10 @@ function rememberInUrl(difficulty: Difficulty, seed: number): void {
 
 export function App() {
   const [session, dispatch] = useReducer(sessionReducer, undefined, () => createSession(createPuzzle(initialPuzzleOptions())));
-  const { game, selected, notesMode, log, lastBatch } = session;
+  const { game, selected, notesMode, armedDigit, log, lastBatch } = session;
   const reducedMotion = usePrefersReducedMotion();
   const { rootRef, fxLayerRef, playEvents, stopAll, setTimeScale } = useAnimations(lastBatch, reducedMotion);
-  const cells = useMemo(() => cellViews(game, selected), [game, selected]);
+  const cells = useMemo(() => cellViews(game, selected, armedDigit), [game, selected, armedDigit]);
   const remaining = useMemo(() => remainingByDigit(game), [game]);
 
   useEffect(() => rememberInUrl(game.difficulty, game.seed), [game.difficulty, game.seed]);
@@ -103,7 +103,7 @@ export function App() {
       <Board
         cells={cells}
         fxLayerRef={fxLayerRef}
-        onSelect={(cell) => dispatch({ type: SessionActionType.Select, cell })}
+        onPress={(cell, secondary) => dispatch({ type: SessionActionType.PressCell, cell, secondary })}
         overlay={
           game.status === GameStatus.Solved && (
             <div className="solved-card" data-control={Control.SolvedCard} role="status">
@@ -122,14 +122,18 @@ export function App() {
       <NumberPad
         remaining={remaining}
         notesMode={notesMode}
-        onDigit={(digit: Digit) => run({ type: CommandType.Input, digit, asNote: notesMode })}
+        armedDigit={armedDigit}
+        onDigit={(digit: Digit) => dispatch({ type: SessionActionType.ArmDigit, digit })}
         onErase={() => run({ type: CommandType.Erase })}
         onUndo={() => run({ type: CommandType.Undo })}
         onRedo={() => run({ type: CommandType.Redo })}
         onToggleNotes={() => run({ type: CommandType.ToggleNotesMode })}
       />
 
-      <p className="hint">Toetsen: 1-9 plaatsen, Shift+cijfer notitie, N notitiemodus, pijltjes bewegen, Backspace wissen, Ctrl+Z / Ctrl+Y.</p>
+      <p className="hint">
+        Muis: kies onderin een cijfer, dan linksklik plaatsen en rechtsklik notitie (Esc laat los). Toetsen: 1-9 plaatsen, Shift+cijfer notitie,
+        N notitiemodus, pijltjes bewegen, Backspace wissen, Ctrl+Z / Ctrl+Y.
+      </p>
 
       {import.meta.env.DEV && <DevPanel game={game} selected={selected} log={log} playEvents={playEvents} setTimeScale={setTimeScale} />}
     </main>

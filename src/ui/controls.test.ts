@@ -7,6 +7,10 @@ const NO_MODIFIERS = { shiftKey: false, ctrlKey: false, metaKey: false, altKey: 
 const key = (pressed: string, code = "", modifiers: Partial<KeyInput> = {}): KeyInput => ({ key: pressed, code, ...NO_MODIFIERS, ...modifiers });
 
 describe("keyToCommand", () => {
+  it("lets go of the armed digit on Escape", () => {
+    expect(keyToCommand(key("Escape", "Escape"), false)).toEqual({ type: CommandType.Disarm });
+  });
+
   it("repeats moves and undo/redo while a key is held, but not inputs or toggles", () => {
     const held = { repeat: true };
     expect(keyToCommand(key("ArrowRight", "", held), false)).toEqual({ type: CommandType.Move, direction: Direction.Right });
@@ -77,6 +81,14 @@ describe("cellViews", () => {
     expect(views.filter((view) => view.peer)).toHaveLength(20);
     // The classic puzzle shows 5 at cells 0, 14 and 71 (row 7, column 8).
     expect(views.flatMap((view, cell) => (view.sameDigit ? [cell] : []))).toEqual([0, 14, 71]);
+  });
+
+  it("highlights the armed digit instead of the selected cell's digit", () => {
+    const views = cellViews(game, 0, 3);
+    expect(views.flatMap((view, cell) => (view.sameDigit ? [cell] : []))).toEqual(
+      [...game.values.keys()].filter((cell) => game.values[cell] === 3),
+    );
+    expect(views[0].sameDigit).toBe(false);
   });
 
   it("shows notes in empty cells and marks conflicts", () => {
