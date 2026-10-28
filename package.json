@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
-    "check": "node scripts/check.mjs"
+    "check": "node scripts/check.mjs",
+    "build:bank": "tsx scripts/build-puzzle-bank.ts"
   },
   "dependencies": {
     "react": "^19.3.1",
@@ -26,6 +27,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "fast-check": "^4.10.2",
     "globals": "^17.13.0",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.1",
     "vite": "^8.3.5",
