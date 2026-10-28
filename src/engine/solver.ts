@@ -2,6 +2,7 @@
 // candidates (MRV). Used units are tracked as bitmasks, so a candidate lookup is three ORs.
 import { ALL_CANDIDATES, NO_CANDIDATES, countCandidates, digitBit, type CandidateMask } from "./candidates";
 import { CELL_COUNT, EMPTY, GRID_SIZE, boxOf, cloneGrid, columnOf, rowOf, type Digit, type Grid } from "./grid";
+import type { Random } from "./random";
 
 export const SolveStatus = {
   Solved: "solved",
@@ -55,11 +56,17 @@ function toggle(state: SearchState, cell: number, bit: CandidateMask): void {
   state.boxMasks[boxOf(cell)] ^= bit;
 }
 
+function candidateBits(candidates: CandidateMask, random: Random | undefined): CandidateMask[] {
+  const bits: CandidateMask[] = [];
+  for (let rest = candidates; rest !== 0; rest &= rest - 1) bits.push(rest & -rest);
+  return random ? random.shuffle(bits) : bits;
+}
+
 /**
  * Visits solutions until `onSolution` returns true (stop) or the space is exhausted.
- * Returns true when stopped early.
+ * Returns true when stopped early. With `random`, digits are tried in a random order.
  */
-function search(state: SearchState, onSolution: (solution: Grid) => boolean): boolean {
+function search(state: SearchState, onSolution: (solution: Grid) => boolean, random?: Random): boolean {
   let bestCell = -1;
   let bestCandidates = NO_CANDIDATES;
   let bestCount = GRID_SIZE + 1;
@@ -77,11 +84,10 @@ function search(state: SearchState, onSolution: (solution: Grid) => boolean): bo
   }
   if (bestCell === -1) return onSolution(cloneGrid(state.cells));
 
-  for (let rest = bestCandidates; rest !== 0; rest &= rest - 1) {
-    const bit = rest & -rest;
+  for (const bit of candidateBits(bestCandidates, random)) {
     state.cells[bestCell] = Math.log2(bit) + 1;
     toggle(state, bestCell, bit);
-    const stopped = search(state, onSolution);
+    const stopped = search(state, onSolution, random);
     toggle(state, bestCell, bit);
     state.cells[bestCell] = EMPTY;
     if (stopped) return true;
@@ -89,15 +95,24 @@ function search(state: SearchState, onSolution: (solution: Grid) => boolean): bo
   return false;
 }
 
-/** Finds a solution; when there are several, which one is returned is unspecified. */
-export function solve(grid: Grid): SolveResult {
+export interface SolveOptions {
+  /** Try digits in a seeded random order; solving an empty grid this way yields a random full grid. */
+  random?: Random;
+}
+
+/** Finds a solution; when there are several, which one is returned depends on `options.random`. */
+export function solve(grid: Grid, options: SolveOptions = {}): SolveResult {
   const state = createSearchState(grid);
   if (!state) return { status: SolveStatus.Invalid };
   let found: Grid | null = null;
-  search(state, (solution) => {
-    found = solution;
-    return true;
-  });
+  search(
+    state,
+    (solution) => {
+      found = solution;
+      return true;
+    },
+    options.random,
+  );
   return found ? { status: SolveStatus.Solved, solution: found } : { status: SolveStatus.Unsolvable };
 }
 

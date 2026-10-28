@@ -10,14 +10,15 @@ import {
   UNSOLVABLE_PUZZLE,
 } from "./__fixtures__/puzzles";
 import { CELL_COUNT, EMPTY, GRID_SIZE, boxOf, cellAt, formatGrid, parseGrid, type Grid } from "./grid";
+import { createRandom, type Random } from "./random";
 import { SolveStatus, countSolutions, hasUniqueSolution, solve } from "./solver";
 import { isSolved, respectsGivens } from "./validator";
 
 /** Hard puzzles must stay well under this, or generating them later will feel slow. */
 const HARD_PUZZLE_BUDGET_MS = 500;
 
-function expectSolutionOf(puzzle: Grid): Grid {
-  const result = solve(puzzle);
+function expectSolutionOf(puzzle: Grid, random?: Random): Grid {
+  const result = solve(puzzle, { random });
   if (result.status !== SolveStatus.Solved) throw new Error(`Expected a solution, got ${result.status}`);
   expect(isSolved(result.solution)).toBe(true);
   expect(respectsGivens(puzzle, result.solution)).toBe(true);
@@ -44,6 +45,12 @@ describe("solve", () => {
 
   it("fills an empty grid", () => {
     expectSolutionOf(parseGrid(EMPTY_PUZZLE));
+  });
+
+  it("fills an empty grid differently per seed, and the same for the same seed", () => {
+    const fill = (seed: number) => formatGrid(expectSolutionOf(parseGrid(EMPTY_PUZZLE), createRandom(seed)));
+    expect(fill(1)).toBe(fill(1));
+    expect(fill(1)).not.toBe(fill(2));
   });
 
   it("does not modify its input", () => {
