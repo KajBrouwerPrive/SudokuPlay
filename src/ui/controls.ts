@@ -49,6 +49,8 @@ export interface KeyInput {
   ctrlKey: boolean;
   metaKey: boolean;
   altKey: boolean;
+  /** True for the auto-repeat presses of a held key. */
+  repeat: boolean;
 }
 
 const ARROW_DIRECTIONS: Readonly<Record<string, Direction>> = {
@@ -70,11 +72,20 @@ function digitFrom(input: KeyInput): Digit | null {
   return isDigit(value) ? value : null;
 }
 
+/** Holding these keys repeats them: gliding across the board or rewinding many moves. */
+const REPEATABLE_COMMANDS: ReadonlySet<Command["type"]> = new Set([CommandType.Move, CommandType.Undo, CommandType.Redo]);
+
 /**
  * Maps a key press to a command. Shift flips the notes mode for one digit, so players can
- * pencil in without switching modes. Returns null for keys the board does not handle.
+ * pencil in without switching modes. Returns null for keys the board does not handle, and for
+ * auto-repeats of keys that would otherwise flicker (a note or the notes mode toggling on and off).
  */
 export function keyToCommand(input: KeyInput, notesMode: boolean): Command | null {
+  const command = commandForKey(input, notesMode);
+  return command && input.repeat && !REPEATABLE_COMMANDS.has(command.type) ? null : command;
+}
+
+function commandForKey(input: KeyInput, notesMode: boolean): Command | null {
   const key = input.key.toLowerCase();
   if (input.ctrlKey || input.metaKey) {
     if (key === UNDO_KEY && !input.shiftKey) return { type: CommandType.Undo };

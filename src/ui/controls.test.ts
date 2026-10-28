@@ -3,10 +3,19 @@ import { CLASSIC_PUZZLE, CLASSIC_SOLUTION } from "../engine/__fixtures__/puzzles
 import { ActionType, Difficulty, applyAction, createGame, parseGrid } from "../engine";
 import { CommandType, Direction, cellViews, inputAction, keyToCommand, moveSelection, type KeyInput } from "./controls";
 
-const NO_MODIFIERS = { shiftKey: false, ctrlKey: false, metaKey: false, altKey: false };
+const NO_MODIFIERS = { shiftKey: false, ctrlKey: false, metaKey: false, altKey: false, repeat: false };
 const key = (pressed: string, code = "", modifiers: Partial<KeyInput> = {}): KeyInput => ({ key: pressed, code, ...NO_MODIFIERS, ...modifiers });
 
 describe("keyToCommand", () => {
+  it("repeats moves and undo/redo while a key is held, but not inputs or toggles", () => {
+    const held = { repeat: true };
+    expect(keyToCommand(key("ArrowRight", "", held), false)).toEqual({ type: CommandType.Move, direction: Direction.Right });
+    expect(keyToCommand(key("z", "KeyZ", { ...held, ctrlKey: true }), false)).toEqual({ type: CommandType.Undo });
+    expect(keyToCommand(key("5", "Digit5", held), true)).toBeNull();
+    expect(keyToCommand(key("n", "KeyN", held), false)).toBeNull();
+    expect(keyToCommand(key("Backspace", "", held), false)).toBeNull();
+  });
+
   it("places digits, or notes them in notes mode", () => {
     expect(keyToCommand(key("5", "Digit5"), false)).toEqual({ type: CommandType.Input, digit: 5, asNote: false });
     expect(keyToCommand(key("5", "Numpad5"), true)).toEqual({ type: CommandType.Input, digit: 5, asNote: true });
