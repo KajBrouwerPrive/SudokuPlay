@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EFFECTS, Effect, durationFor } from "./effects";
+import { EFFECTS, Effect, durationFor, resolveTokens } from "./effects";
 
 /** Properties that move or resize something; reduced motion must not use them. */
 const MOTION_PROPERTIES = ["transform", "translate", "rotate", "scale", "left", "top", "width", "height"];
@@ -29,5 +29,25 @@ describe("effect specs", () => {
 
   it("keeps reduced effects short", () => {
     for (const effect of allEffects) expect(durationFor(effect, true)).toBeLessThanOrEqual(durationFor(effect, false));
+  });
+});
+
+describe("resolveTokens", () => {
+  it("fills in design tokens and leaves the rest alone", () => {
+    const tokens: Record<string, string> = { "--fx-wave": " gold " };
+    const resolved = resolveTokens(
+      [{ boxShadow: "inset 0 0 0 999px var(--fx-wave)", offset: 0.5 }, { boxShadow: "var(--unknown)", opacity: 1 }],
+      (token) => tokens[token] ?? "",
+    );
+    expect(resolved).toEqual([{ boxShadow: "inset 0 0 0 999px gold", offset: 0.5 }, { boxShadow: "var(--unknown)", opacity: 1 }]);
+  });
+
+  it("finds a value for every token the effects use", () => {
+    const used = new Set(
+      Object.values(EFFECTS).flatMap(({ keyframes, reducedKeyframes }) =>
+        [...keyframes, ...(reducedKeyframes ?? [])].flatMap((frame) => [...JSON.stringify(frame).matchAll(/var\((--[\w-]+)\)/g)].map(([, token]) => token)),
+      ),
+    );
+    expect([...used].sort()).toEqual(["--fx-conflict", "--fx-sweep", "--fx-wave"]);
   });
 });

@@ -1,39 +1,105 @@
-/* Design tokens: every colour, radius, shadow and font lives here, for light and dark. */
+/* Design tokens: every colour, radius, shadow and font lives here, for light and dark.
+   Style "soft candy": warm cream, rounded tiles on a peach tray, violet ink, gold for celebrations.
+   Colour pairs used for text are checked for WCAG AA contrast in tokens.test.ts. */
 :root {
-  --bg: #f6f5f2;
+  /* Surfaces */
+  --bg: #fff6ec;
+  --bg-blob-1: #ffe3f1;
+  --bg-blob-2: #e4f3ff;
   --surface: #ffffff;
-  --text: #1d1d1f;
-  --muted: #6b6b70;
-  --line: #c9c7c2;
-  --line-strong: #2b2b2e;
-  --given: #1d1d1f;
-  --entered: #2457c5;
-  --peer: #eceae4;
-  --same-digit: #d7e3fb;
-  --selected-glow: rgba(36, 87, 197, 0.12);
-  --conflict: #c62828;
-  --conflict-bg: #fde4e4;
-  --accent: #2457c5;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  color: var(--text);
-  background: var(--bg);
+  --tray: #ffe4c8;
+  --box: #ffefdf;
+  --tile: #ffffff;
+  --tile-edge: #f0cfae;
+  --peer: #f4f0ff;
+  --same-digit: #e2dafe;
+
+  /* Ink */
+  --text: #3a2e4a;
+  --muted: #6e5f7d;
+  --given: #3a2e4a;
+  --entered: #5440d4;
+  --conflict: #b8233a;
+  --conflict-bg: #ffe1e5;
+
+  /* Accent: buttons, the cursor, rings */
+  --accent: #5440d4;
+  --accent-contrast: #ffffff;
+  --accent-glow: rgba(84, 64, 212, 0.14);
+  --gold: #ffc93c;
+
+  /* Keys (number pad and tools) */
+  --key: #ffffff;
+  --key-edge: #e9c7a6;
+  --key-done: #f6ecff;
+
+  /* Animation colours, read by the cue player */
+  --fx-conflict: rgba(229, 57, 83, 0.35);
+  --fx-sweep: rgba(120, 104, 255, 0.28);
+  --fx-wave: rgba(255, 201, 60, 0.5);
+
+  /* Shape */
+  --radius-board: 22px;
+  --radius-box: 14px;
+  --radius-tile: 9px;
+  --radius-key: 14px;
+  --radius-pill: 999px;
+  --board-padding: 8px;
+  --box-gap: 6px;
+  --cell-gap: 3px;
+  --tile-edge-width: 3px;
+  --key-edge-width: 4px;
+  --shadow-soft: 0 12px 32px rgba(120, 70, 30, 0.14);
+  --shadow-card: 0 18px 48px rgba(58, 46, 74, 0.28);
+
+  /* Type */
+  --font-digits: "Fredoka Variable", "Nunito Variable", system-ui, sans-serif;
+  --font-ui: "Nunito Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-cursor: 140ms;
+  --duration-press: 80ms;
+
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #161618;
-    --surface: #1f1f22;
-    --text: #ececef;
-    --muted: #9a9aa2;
-    --line: #3a3a40;
-    --line-strong: #c9c9cf;
-    --given: #ececef;
-    --entered: #8fb0ff;
-    --peer: #26262b;
-    --same-digit: #23324f;
-    --selected-glow: rgba(143, 176, 255, 0.14);
-    --conflict: #ff8a80;
-    --conflict-bg: #4a2020;
-    --accent: #8fb0ff;
+    --bg: #1d1828;
+    --bg-blob-1: #2e1f3d;
+    --bg-blob-2: #1c2940;
+    --surface: #2a2338;
+    --tray: #2a2338;
+    --box: #312942;
+    --tile: #3b3250;
+    --tile-edge: #1a1524;
+    --peer: #4b4166;
+    --same-digit: #4a3f7a;
+
+    --text: #f4eefc;
+    --muted: #c4b8d6;
+    --given: #f4eefc;
+    --entered: #c3b9ff;
+    --conflict: #ffb3bd;
+    --conflict-bg: #5a2638;
+
+    --accent: #b4a8ff;
+    --accent-contrast: #1d1828;
+    --accent-glow: rgba(180, 168, 255, 0.16);
+    --gold: #ffd25e;
+
+    --key: #3b3250;
+    --key-edge: #15111d;
+    --key-done: #2f2840;
+
+    --fx-conflict: rgba(255, 110, 130, 0.35);
+    --fx-sweep: rgba(180, 168, 255, 0.3);
+    --fx-wave: rgba(255, 210, 94, 0.4);
+
+    --shadow-soft: 0 12px 32px rgba(0, 0, 0, 0.35);
+    --shadow-card: 0 18px 48px rgba(0, 0, 0, 0.5);
+
+    color-scheme: dark;
   }
 }

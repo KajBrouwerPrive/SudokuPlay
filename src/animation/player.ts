@@ -5,7 +5,7 @@
 import { BOX_SIZE, createRandom } from "../engine";
 import { TargetKind, type Cue, type CueTarget } from "./choreograph";
 import { createBurst, runConfetti } from "./confetti";
-import { EFFECTS, EffectPart, durationFor } from "./effects";
+import { EFFECTS, EffectPart, durationFor, resolveTokens } from "./effects";
 
 const VALUE_SELECTOR = ".cell__value";
 const GHOST_CLASS: Readonly<Partial<Record<EffectPart, string>>> = {
@@ -47,7 +47,9 @@ export class CuePlayer {
   play(cues: readonly Cue[], reducedMotion: boolean): void {
     if (cues.length === 0) return;
     this.finishAll();
-    for (const cue of cues) this.playCue(cue, reducedMotion);
+    // Read the tokens once per batch; the finale alone has over a hundred cues.
+    const tokens = getComputedStyle(this.root);
+    for (const cue of cues) this.playCue(cue, reducedMotion, tokens);
   }
 
   finishAll(): void {
@@ -55,7 +57,7 @@ export class CuePlayer {
     this.running.clear();
   }
 
-  private playCue(cue: Cue, reducedMotion: boolean): void {
+  private playCue(cue: Cue, reducedMotion: boolean, tokens: CSSStyleDeclaration): void {
     const spec = EFFECTS[cue.effect];
     const keyframes = reducedMotion ? spec.reducedKeyframes : spec.keyframes;
     if (!keyframes) return;
@@ -67,7 +69,7 @@ export class CuePlayer {
     if (!element) return;
     const isTemporary = isConfetti || ghostClass !== undefined;
 
-    const animation = element.animate(keyframes, {
+    const animation = element.animate(resolveTokens(keyframes, (token) => tokens.getPropertyValue(token)), {
       duration: durationFor(cue.effect, reducedMotion),
       delay: cue.delayMs,
       easing: reducedMotion ? "ease-out" : spec.easing,
