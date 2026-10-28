@@ -32,6 +32,18 @@ export const Effect = {
   Bonk: "bonk",
   /** A button refuses a press. */
   Wiggle: "wiggle",
+  /** A completed row, column or box: each cell hops and glows as the wave passes. */
+  Wave: "wave",
+  /** A completed digit: every copy hops in turn. */
+  DigitDance: "digitDance",
+  /** The pad button of a completed digit squashes before it settles as done. */
+  PadComplete: "padComplete",
+  /** The solved board: every cell flips along the diagonal. */
+  Flip: "flip",
+  /** The solved board: confetti bursts from the board's centre. */
+  Confetti: "confetti",
+  /** The solved card springs in. */
+  CardIn: "cardIn",
 } as const;
 export type Effect = (typeof Effect)[keyof typeof Effect];
 
@@ -48,6 +60,8 @@ export const EffectPart = {
   GhostValue: "ghostValue",
   GhostNote: "ghostNote",
   GhostRing: "ghostRing",
+  /** A full-screen canvas with particles; the keyframes only fade the canvas out. */
+  Confetti: "confetti",
 } as const;
 export type EffectPart = (typeof EffectPart)[keyof typeof EffectPart];
 
@@ -68,6 +82,7 @@ const REDUCED_DURATION_MS = 150;
 const CONFLICT_SHADOW = "inset 0 0 0 999px rgba(229, 57, 53, 0.35)";
 const SWEEP_SHADOW = "inset 0 0 0 999px rgba(120, 160, 255, 0.3)";
 const NO_SHADOW = "inset 0 0 0 999px rgba(0, 0, 0, 0)";
+const WAVE_SHADOW = "inset 0 0 0 999px rgba(255, 196, 0, 0.35)";
 
 const fadeIn: Keyframe[] = [{ opacity: 0 }, { opacity: 1 }];
 const fadeOut: Keyframe[] = [{ opacity: 1 }, { opacity: 0 }];
@@ -225,6 +240,65 @@ export const EFFECTS: Readonly<Record<Effect, EffectSpec>> = {
       { transform: "rotate(0deg)" },
     ],
     reducedKeyframes: null,
+  },
+  [Effect.Wave]: {
+    part: EffectPart.Cell,
+    durationMs: 420,
+    easing: EASE_OUT,
+    keyframes: [
+      { transform: "translateY(0) scale(1)", boxShadow: NO_SHADOW },
+      { transform: "translateY(-5px) scale(1.08)", boxShadow: WAVE_SHADOW, offset: 0.35 },
+      { transform: "translateY(0) scale(1)", boxShadow: NO_SHADOW },
+    ],
+    reducedKeyframes: [{ boxShadow: NO_SHADOW }, { boxShadow: WAVE_SHADOW, offset: 0.35 }, { boxShadow: NO_SHADOW }],
+  },
+  [Effect.DigitDance]: {
+    part: EffectPart.Value,
+    durationMs: 380,
+    easing: EASE_OUT,
+    keyframes: [
+      { transform: "translateY(0) rotate(0deg) scale(1)" },
+      { transform: "translateY(-10px) rotate(-12deg) scale(1.25)", offset: 0.35 },
+      { transform: "translateY(0) rotate(8deg) scale(0.95)", offset: 0.65 },
+      { transform: "translateY(0) rotate(0deg) scale(1)" },
+    ],
+    reducedKeyframes: blink,
+  },
+  [Effect.PadComplete]: {
+    part: EffectPart.Control,
+    durationMs: 420,
+    easing: EASE_OUT,
+    keyframes: [
+      { transform: "scale(1)" },
+      { transform: "scale(1.25)", offset: 0.3 },
+      { transform: "scale(0.85)", offset: 0.6 },
+      { transform: "scale(1)" },
+    ],
+    reducedKeyframes: blink,
+  },
+  [Effect.Flip]: {
+    part: EffectPart.Cell,
+    durationMs: 520,
+    easing: EASE_IN_OUT,
+    keyframes: [{ transform: "perspective(300px) rotate3d(1, -1, 0, 0deg)" }, { transform: "perspective(300px) rotate3d(1, -1, 0, 360deg)" }],
+    reducedKeyframes: blink,
+  },
+  [Effect.Confetti]: {
+    part: EffectPart.Confetti,
+    durationMs: 2800,
+    easing: "linear",
+    keyframes: [{ opacity: 1 }, { opacity: 1, offset: 0.75 }, { opacity: 0 }],
+    reducedKeyframes: null,
+  },
+  [Effect.CardIn]: {
+    part: EffectPart.Control,
+    durationMs: 520,
+    easing: SPRING_EASING,
+    keyframes: [
+      { transform: "translateY(24px) scale(0.6)", opacity: 0 },
+      { transform: "translateY(0) scale(1)", opacity: 1 },
+    ],
+    reducedKeyframes: fadeIn,
   },
 };
 

@@ -1,12 +1,13 @@
 // The director: turns one transition's engine events into timed animation cues. Pure, so timing
 // and order are unit-tested; the cue player only executes what this returns.
-import { GameEventType, RejectReason, columnOf, rowOf, type Digit, type GameEvent } from "../engine";
+import { CELL_COUNT, GRID_SIZE, GameEventType, RejectReason, columnOf, rowOf, type Digit, type GameEvent } from "../engine";
 import { Effect } from "./effects";
 
 export const Control = {
   Mistakes: "mistakes",
   Undo: "undo",
   Redo: "redo",
+  SolvedCard: "solvedCard",
 } as const;
 export type Control = (typeof Control)[keyof typeof Control];
 
@@ -15,13 +16,15 @@ export const TargetKind = {
   Note: "note",
   Pad: "pad",
   Control: "control",
+  Board: "board",
 } as const;
 
 export type CueTarget =
   | { kind: typeof TargetKind.Cell; cell: number }
   | { kind: typeof TargetKind.Note; cell: number; digit: Digit }
   | { kind: typeof TargetKind.Pad; digit: Digit }
-  | { kind: typeof TargetKind.Control; control: Control };
+  | { kind: typeof TargetKind.Control; control: Control }
+  | { kind: typeof TargetKind.Board };
 
 export interface Cue {
   effect: Effect;
@@ -35,6 +38,18 @@ export interface Cue {
 export const LANDING_DELAY_MS = 140;
 /** Removed notes leave one ring of distance at a time, nearest first. */
 export const NOTE_STAGGER_MS = 35;
+/** A completion wave travels one cell further from the placed digit every this many ms. */
+export const WAVE_STAGGER_MS = 40;
+/** The digit dance starts once the waves are well under way; one copy hops at a time. */
+export const DANCE_DELAY_MS = 420;
+export const DANCE_STAGGER_MS = 70;
+/** The finale waits for the digit dance, which the last placement always triggers. */
+export const FINALE_DELAY_MS = 1100;
+/** The flip cascade runs one diagonal (row + column) at a time, from the top left. */
+export const FLIP_STAGGER_MS = 35;
+/** The last diagonal starts flipping after this, which is when confetti and the card follow. */
+export const FINALE_CASCADE_MS = FINALE_DELAY_MS + 2 * (GRID_SIZE - 1) * FLIP_STAGGER_MS;
+export const CARD_DELAY_MS = FINALE_CASCADE_MS + 200;
 
 const cellTarget = (cell: number): CueTarget => ({ kind: TargetKind.Cell, cell });
 const controlTarget = (control: Control): CueTarget => ({ kind: TargetKind.Control, control });
@@ -44,7 +59,14 @@ export function distance(from: number, to: number): number {
   return Math.max(Math.abs(rowOf(from) - rowOf(to)), Math.abs(columnOf(from) - columnOf(to)));
 }
 
-function cuesFor(event: GameEvent, placedCell: number | null): Cue[] {
+/** What earlier events in the same batch tell later ones. */
+interface BatchContext {
+  placedCell: number | null;
+  /** Cells already in a wave; the placed cell belongs to every completed unit but should hop once. */
+  wavedCells: Set<number>;
+}
+
+function cuesFor(event: GameEvent, { placedCell, wavedCells }: BatchContext): Cue[] {
   switch (event.type) {
     case GameEventType.CellPlaced:
       return event.correct
@@ -93,18 +115,37 @@ function cuesFor(event: GameEvent, placedCell: number | null): Cue[] {
           return [];
       }
       return [];
-    // Celebrations (waves, digit dance, finale) arrive in the next step of phase 5.
-    case GameEventType.UnitCompleted:
+    case GameEventType.UnitCompleted: {
+      const origin = placedCell ?? event.unit.cells[0];
+      return event.unit.cells
+        .filter((cell) => !wavedCells.has(cell))
+        .map((cell) => {
+          wavedCells.add(cell);
+          return { effect: Effect.Wave, target: cellTarget(cell), delayMs: LANDING_DELAY_MS + WAVE_STAGGER_MS * distance(origin, cell) };
+        });
+    }
     case GameEventType.DigitCompleted:
+      return [
+        ...event.cells.map((cell, turn) => ({ effect: Effect.DigitDance, target: cellTarget(cell), delayMs: DANCE_DELAY_MS + DANCE_STAGGER_MS * turn })),
+        { effect: Effect.PadComplete, target: { kind: TargetKind.Pad, digit: event.digit }, delayMs: DANCE_DELAY_MS + DANCE_STAGGER_MS * event.cells.length },
+      ];
     case GameEventType.PuzzleSolved:
-      return [];
+      return [
+        ...Array.from({ length: CELL_COUNT }, (_, cell) => ({
+          effect: Effect.Flip,
+          target: cellTarget(cell),
+          delayMs: FINALE_DELAY_MS + FLIP_STAGGER_MS * (rowOf(cell) + columnOf(cell)),
+        })),
+        { effect: Effect.Confetti, target: { kind: TargetKind.Board }, delayMs: FINALE_CASCADE_MS },
+        { effect: Effect.CardIn, target: controlTarget(Control.SolvedCard), delayMs: CARD_DELAY_MS },
+      ];
   }
 }
 
 export function choreograph(events: readonly GameEvent[]): Cue[] {
-  let placedCell: number | null = null;
+  const context: BatchContext = { placedCell: null, wavedCells: new Set() };
   return events.flatMap((event) => {
-    if (event.type === GameEventType.CellPlaced) placedCell = event.cell;
-    return cuesFor(event, placedCell);
+    if (event.type === GameEventType.CellPlaced) context.placedCell = event.cell;
+    return cuesFor(event, context);
   });
 }

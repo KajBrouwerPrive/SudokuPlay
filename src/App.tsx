@@ -43,7 +43,7 @@ export function App() {
   const [session, dispatch] = useReducer(sessionReducer, undefined, () => createSession(createPuzzle(initialPuzzleOptions())));
   const { game, selected, notesMode, log, lastBatch } = session;
   const reducedMotion = usePrefersReducedMotion();
-  const { rootRef, fxLayerRef, playEvents } = useAnimations(lastBatch, reducedMotion);
+  const { rootRef, fxLayerRef, playEvents, stopAll } = useAnimations(lastBatch, reducedMotion);
   const cells = useMemo(() => cellViews(game, selected), [game, selected]);
   const remaining = useMemo(() => remainingByDigit(game), [game]);
 
@@ -62,8 +62,10 @@ export function App() {
   }, [notesMode]);
 
   const run = (command: Command) => dispatch({ type: SessionActionType.Command, command });
-  const startNewGame = (difficulty: Difficulty) =>
+  const startNewGame = (difficulty: Difficulty) => {
+    stopAll();
     dispatch({ type: SessionActionType.NewGame, puzzle: createPuzzle({ difficulty, seed: randomSeed() }) });
+  };
 
   return (
     <main className="app" ref={rootRef}>
@@ -86,10 +88,26 @@ export function App() {
 
       <p className="status" role="status">
         Fouten: <span className="status__mistakes" data-control={Control.Mistakes}>{game.mistakes}</span> · Seed {game.seed}
-        {game.status === GameStatus.Solved && <strong> · Opgelost!</strong>}
       </p>
 
-      <Board cells={cells} fxLayerRef={fxLayerRef} onSelect={(cell) => dispatch({ type: SessionActionType.Select, cell })} />
+      <Board
+        cells={cells}
+        fxLayerRef={fxLayerRef}
+        onSelect={(cell) => dispatch({ type: SessionActionType.Select, cell })}
+        overlay={
+          game.status === GameStatus.Solved && (
+            <div className="solved-card" data-control={Control.SolvedCard} role="status">
+              <strong className="solved-card__title">Opgelost!</strong>
+              <span>
+                {DIFFICULTY_LABELS[game.difficulty]} · {game.mistakes === 0 ? "zonder fouten" : `${game.mistakes} ${game.mistakes === 1 ? "fout" : "fouten"}`}
+              </span>
+              <button type="button" onClick={() => startNewGame(game.difficulty)}>
+                Nog een
+              </button>
+            </div>
+          )
+        }
+      />
 
       <NumberPad
         remaining={remaining}

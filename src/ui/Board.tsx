@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { BOX_SIZE, DIGITS, columnOf, rowOf } from "../engine";
 import type { CellView } from "./controls";
 
@@ -7,6 +7,8 @@ interface BoardProps {
   onSelect: (cell: number) => void;
   /** Layer over the board for temporary animation elements; React never renders into it. */
   fxLayerRef: Ref<HTMLDivElement>;
+  /** Shown over the board, such as the solved card. */
+  overlay?: ReactNode;
 }
 
 function cellClassName(cell: number, view: CellView): string {
@@ -27,10 +29,10 @@ function cellLabel(cell: number, view: CellView): string {
   return view.notes.length > 0 ? `${position}: leeg, notities ${view.notes.join(" ")}` : `${position}: leeg`;
 }
 
-export function Board({ cells, onSelect, fxLayerRef }: BoardProps) {
+export function Board({ cells, onSelect, fxLayerRef, overlay }: BoardProps) {
   return (
     <div className="board-frame">
-      <div className="board" role="group" aria-label="Sudoku">
+      <div className="board" data-board role="group" aria-label="Sudoku">
         {cells.map((view, cell) => (
           <button
             key={cell}
@@ -57,6 +59,7 @@ export function Board({ cells, onSelect, fxLayerRef }: BoardProps) {
           </button>
         ))}
       </div>
+      {overlay}
       <div ref={fxLayerRef} className="fx-layer" aria-hidden="true" />
     </div>
   );

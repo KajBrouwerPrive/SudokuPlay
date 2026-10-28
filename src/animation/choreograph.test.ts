@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { ActionType, GameEventType, RejectReason, ROWS, type GameEvent } from "../engine";
-import { Control, LANDING_DELAY_MS, NOTE_STAGGER_MS, TargetKind, choreograph, distance } from "./choreograph";
+import { ActionType, BOXES, COLUMNS, GameEventType, RejectReason, ROWS, type GameEvent } from "../engine";
+import {
+  CARD_DELAY_MS,
+  Control,
+  DANCE_DELAY_MS,
+  DANCE_STAGGER_MS,
+  FINALE_CASCADE_MS,
+  FINALE_DELAY_MS,
+  LANDING_DELAY_MS,
+  NOTE_STAGGER_MS,
+  TargetKind,
+  WAVE_STAGGER_MS,
+  choreograph,
+  distance,
+} from "./choreograph";
 import { Effect } from "./effects";
 
 const effects = (events: GameEvent[]) => choreograph(events).map((cue) => cue.effect);
@@ -71,14 +84,62 @@ describe("choreograph", () => {
     expect(choreograph([{ type: GameEventType.MoveRejected, action: place, reason: RejectReason.GameOver, cell: 0 }])).toEqual([]);
   });
 
-  it("has no cues yet for celebrations", () => {
-    expect(
-      choreograph([
-        { type: GameEventType.UnitCompleted, unit: ROWS[0] },
-        { type: GameEventType.DigitCompleted, digit: 1 },
-        { type: GameEventType.PuzzleSolved, mistakes: 0 },
-      ]),
-    ).toEqual([]);
+  it("sends a wave through a completed row, outward from the placed digit", () => {
+    const cues = choreograph([
+      { type: GameEventType.CellPlaced, cell: 4, digit: 1, correct: true },
+      { type: GameEventType.UnitCompleted, unit: ROWS[0] },
+    ]).filter((cue) => cue.effect === Effect.Wave);
+    expect(cues.map((cue) => [cue.target, cue.delayMs])).toEqual(
+      ROWS[0].cells.map((cell) => [{ kind: TargetKind.Cell, cell }, LANDING_DELAY_MS + WAVE_STAGGER_MS * Math.abs(cell - 4)]),
+    );
+  });
+
+  it("waves each cell once when a move completes several units", () => {
+    const cues = choreograph([
+      { type: GameEventType.CellPlaced, cell: 0, digit: 1, correct: true },
+      { type: GameEventType.UnitCompleted, unit: ROWS[0] },
+      { type: GameEventType.UnitCompleted, unit: COLUMNS[0] },
+      { type: GameEventType.UnitCompleted, unit: BOXES[0] },
+    ]).filter((cue) => cue.effect === Effect.Wave);
+    const cells = cues.map((cue) => (cue.target.kind === TargetKind.Cell ? cue.target.cell : -1));
+    expect(new Set(cells).size).toBe(cells.length);
+    // Row and column share only the placed cell; the box adds its four inner cells.
+    expect(cells).toHaveLength(9 + 8 + 4);
+  });
+
+  it("starts a wave without a placement at the unit's first cell", () => {
+    const [first] = choreograph([{ type: GameEventType.UnitCompleted, unit: BOXES[4] }]);
+    expect(first).toMatchObject({ target: { kind: TargetKind.Cell, cell: BOXES[4].cells[0] }, delayMs: LANDING_DELAY_MS });
+  });
+
+  it("dances every copy of a completed digit in turn, then settles its pad button", () => {
+    const cells = [2, 12, 22, 27, 37, 47, 60, 70, 80];
+    const cues = choreograph([{ type: GameEventType.DigitCompleted, digit: 6, cells }]);
+    expect(cues.map((cue) => [cue.effect, cue.target, cue.delayMs])).toEqual([
+      ...cells.map((cell, turn) => [Effect.DigitDance, { kind: TargetKind.Cell, cell }, DANCE_DELAY_MS + DANCE_STAGGER_MS * turn]),
+      [Effect.PadComplete, { kind: TargetKind.Pad, digit: 6 }, DANCE_DELAY_MS + DANCE_STAGGER_MS * cells.length],
+    ]);
+  });
+
+  it("flips the solved board diagonal by diagonal, then throws confetti and shows the card", () => {
+    const cues = choreograph([{ type: GameEventType.PuzzleSolved, mistakes: 0 }]);
+    const flips = cues.filter((cue) => cue.effect === Effect.Flip);
+    expect(flips).toHaveLength(81);
+    expect(flips[0].delayMs).toBe(FINALE_DELAY_MS);
+    expect(flips[80].delayMs).toBe(FINALE_CASCADE_MS);
+    // Cells on one anti-diagonal flip together.
+    expect(flips[1].delayMs).toBe(flips[9].delayMs);
+    expect(cues.slice(81)).toEqual([
+      { effect: Effect.Confetti, target: { kind: TargetKind.Board }, delayMs: FINALE_CASCADE_MS },
+      { effect: Effect.CardIn, target: { kind: TargetKind.Control, control: Control.SolvedCard }, delayMs: CARD_DELAY_MS },
+    ]);
+  });
+
+  it("keeps the celebrations in sequence: waves, then the digit dance, then the finale", () => {
+    const longestWave = LANDING_DELAY_MS + WAVE_STAGGER_MS * 8;
+    expect(DANCE_DELAY_MS).toBeGreaterThan(LANDING_DELAY_MS);
+    expect(FINALE_DELAY_MS).toBeGreaterThan(DANCE_DELAY_MS + DANCE_STAGGER_MS * 9);
+    expect(FINALE_DELAY_MS).toBeGreaterThan(longestWave);
   });
 
   it("measures distance in king steps", () => {

@@ -20,7 +20,8 @@ export function usePrefersReducedMotion(): boolean {
 /**
  * Plays the animations for each new event batch. Runs in a layout effect, so a placed digit
  * starts at its first keyframe instead of flashing at full size for one frame.
- * Returns the refs to attach and `playEvents` for previewing effects without changing the game.
+ * Returns the refs to attach, `playEvents` for previewing effects without changing the game, and
+ * `stopAll` to end every running effect (call it before starting a new game).
  */
 export function useAnimations(batch: EventBatch | null, reducedMotion: boolean) {
   const rootRef = useRef<HTMLElement>(null);
@@ -40,10 +41,17 @@ export function useAnimations(batch: EventBatch | null, reducedMotion: boolean) 
   );
 
   useLayoutEffect(() => {
-    if (!batch || playedBatchRef.current === batch.id) return;
+    // Batch ids restart with each game, so forget what played.
+    if (!batch) {
+      playedBatchRef.current = null;
+      return;
+    }
+    if (playedBatchRef.current === batch.id) return;
     playedBatchRef.current = batch.id;
     playEvents(batch.events);
   }, [batch, playEvents]);
 
-  return { rootRef, fxLayerRef, playEvents };
+  const stopAll = useCallback(() => playerRef.current?.finishAll(), []);
+
+  return { rootRef, fxLayerRef, playEvents, stopAll };
 }

@@ -1,9 +1,10 @@
 // Executes cues on the DOM with the Web Animations API. Elements are found through data attributes
-// (data-cell, data-note-digit, data-pad, data-control), so components stay unaware of animations.
+// (data-cell, data-note-digit, data-pad, data-control, data-board), so components stay unaware of animations.
 // Ghosts (copies of things already gone from the state) live in a separate fx layer over the
 // board that React never renders into.
-import { BOX_SIZE } from "../engine";
+import { BOX_SIZE, createRandom } from "../engine";
 import { TargetKind, type Cue, type CueTarget } from "./choreograph";
+import { createBurst, runConfetti } from "./confetti";
 import { EFFECTS, EffectPart, durationFor } from "./effects";
 
 const VALUE_SELECTOR = ".cell__value";
@@ -12,6 +13,8 @@ const GHOST_CLASS: Readonly<Partial<Record<EffectPart, string>>> = {
   [EffectPart.GhostNote]: "fx-ghost fx-ghost--note",
   [EffectPart.GhostRing]: "fx-ring",
 };
+const CONFETTI_CLASS = "fx-confetti";
+const SEED_RANGE = 2 ** 32;
 
 function selectorFor(target: CueTarget): string {
   switch (target.kind) {
@@ -22,6 +25,8 @@ function selectorFor(target: CueTarget): string {
       return `[data-pad="${target.digit}"]`;
     case TargetKind.Control:
       return `[data-control="${target.control}"]`;
+    case TargetKind.Board:
+      return "[data-board]";
   }
 }
 
@@ -33,8 +38,12 @@ export class CuePlayer {
     private readonly fxLayer: HTMLElement,
   ) {}
 
-  /** Starts a new set of cues, first jumping anything still running to its end so moves never pile up. */
+  /**
+   * Starts a new set of cues, first jumping anything still running to its end so moves never pile up.
+   * A batch without cues (a refused move after the finale) leaves running animations alone.
+   */
   play(cues: readonly Cue[], reducedMotion: boolean): void {
+    if (cues.length === 0) return;
     this.finishAll();
     for (const cue of cues) this.playCue(cue, reducedMotion);
   }
@@ -51,8 +60,10 @@ export class CuePlayer {
     const anchor = this.root.querySelector<HTMLElement>(selectorFor(cue.target));
     if (!anchor) return;
     const ghostClass = GHOST_CLASS[spec.part];
-    const element = ghostClass ? this.createGhost(anchor, cue, ghostClass) : this.partOf(anchor, cue);
+    const isConfetti = spec.part === EffectPart.Confetti;
+    const element = isConfetti ? this.createCanvas() : ghostClass ? this.createGhost(anchor, cue, ghostClass) : this.partOf(anchor, cue);
     if (!element) return;
+    const isTemporary = isConfetti || ghostClass !== undefined;
 
     const animation = element.animate(keyframes, {
       duration: durationFor(cue.effect, reducedMotion),
@@ -62,9 +73,11 @@ export class CuePlayer {
       fill: "backwards",
     });
     this.running.add(animation);
+    const stopConfetti = element instanceof HTMLCanvasElement ? this.launchConfetti(element, anchor, cue.delayMs, animation) : null;
     const cleanUp = () => {
       this.running.delete(animation);
-      if (ghostClass) element.remove();
+      stopConfetti?.();
+      if (isTemporary) element.remove();
     };
     animation.finished.then(cleanUp, cleanUp);
   }
@@ -99,5 +112,19 @@ export class CuePlayer {
     Object.assign(ghost.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
     this.fxLayer.append(ghost);
     return ghost;
+  }
+
+  /** A canvas over the whole viewport, so confetti can fly beyond the board. */
+  private createCanvas(): HTMLCanvasElement {
+    const canvas = document.createElement("canvas");
+    canvas.className = CONFETTI_CLASS;
+    this.fxLayer.append(canvas);
+    return canvas;
+  }
+
+  private launchConfetti(canvas: HTMLCanvasElement, board: HTMLElement, delayMs: number, animation: Animation): () => void {
+    const box = board.getBoundingClientRect();
+    const particles = createBurst(createRandom(Math.floor(Math.random() * SEED_RANGE)), box.left + box.width / 2, box.top + box.height / 2);
+    return runConfetti(canvas, particles, delayMs, () => Number(animation.currentTime ?? 0));
   }
 }

@@ -1,6 +1,9 @@
 import { Control } from "../animation/choreograph";
 import { DIGITS, type Digit } from "../engine";
 
+/** Shown instead of the remaining count once all nine copies are placed. */
+const DONE_MARK = "✓";
+
 interface NumberPadProps {
   remaining: Record<Digit, number>;
   notesMode: boolean;
@@ -16,9 +19,16 @@ export function NumberPad({ remaining, notesMode, onDigit, onErase, onUndo, onRe
     <div className="pad">
       <div className="pad__digits">
         {DIGITS.map((digit) => (
-          <button key={digit} type="button" data-pad={digit} className="pad__digit" disabled={remaining[digit] === 0} onClick={() => onDigit(digit)}>
+          <button
+            key={digit}
+            type="button"
+            data-pad={digit}
+            className={remaining[digit] === 0 ? "pad__digit pad__digit--done" : "pad__digit"}
+            disabled={remaining[digit] === 0}
+            onClick={() => onDigit(digit)}
+          >
             <span className="pad__value">{digit}</span>
-            <span className="pad__remaining">{remaining[digit]}</span>
+            <span className="pad__remaining">{remaining[digit] === 0 ? DONE_MARK : remaining[digit]}</span>
           </button>
         ))}
       </div>
