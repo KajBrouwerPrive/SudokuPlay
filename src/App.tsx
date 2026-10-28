@@ -70,9 +70,17 @@ export function App() {
   return (
     <main className="app" ref={rootRef}>
       <header className="toolbar">
-        <h1>SudokuPlay</h1>
+        <h1>
+          Sudoku<span>Play</span>
+        </h1>
+        <button type="button" className="button--primary" onClick={() => startNewGame(game.difficulty)}>
+          Nieuw spel
+        </button>
+      </header>
+
+      <div className="game-bar">
         <label>
-          Niveau{" "}
+          <span className="visually-hidden">Niveau</span>
           <select value={game.difficulty} onChange={(event) => startNewGame(event.target.value as Difficulty)}>
             {DIFFICULTIES.map((difficulty) => (
               <option key={difficulty} value={difficulty}>
@@ -81,14 +89,16 @@ export function App() {
             ))}
           </select>
         </label>
-        <button type="button" onClick={() => startNewGame(game.difficulty)}>
-          Nieuw spel
-        </button>
-      </header>
-
-      <p className="status" role="status">
-        Fouten: <span className="status__mistakes" data-control={Control.Mistakes}>{game.mistakes}</span> · Seed {game.seed}
-      </p>
+        <p className="status" role="status">
+          <span className="status__chip">
+            Fouten{" "}
+            <span className="status__mistakes" data-control={Control.Mistakes}>
+              {game.mistakes}
+            </span>
+          </span>
+          {import.meta.env.DEV && <span className="status__chip">Seed {game.seed}</span>}
+        </p>
+      </div>
 
       <Board
         cells={cells}
@@ -101,7 +111,7 @@ export function App() {
               <span>
                 {DIFFICULTY_LABELS[game.difficulty]} · {game.mistakes === 0 ? "zonder fouten" : `${game.mistakes} ${game.mistakes === 1 ? "fout" : "fouten"}`}
               </span>
-              <button type="button" onClick={() => startNewGame(game.difficulty)}>
+              <button type="button" className="button--primary" onClick={() => startNewGame(game.difficulty)}>
                 Nog een
               </button>
             </div>

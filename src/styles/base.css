@@ -1,53 +1,123 @@
 /* Page-wide basics: layout, header, generic buttons. */
+@import "@fontsource-variable/fredoka/index.css";
+@import "@fontsource-variable/nunito/index.css";
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  background: var(--bg);
+  min-height: 100dvh;
+  font-family: var(--font-ui);
+  color: var(--text);
+  background:
+    radial-gradient(circle at 12% 8%, var(--bg-blob-1) 0, transparent 38%),
+    radial-gradient(circle at 92% 70%, var(--bg-blob-2) 0, transparent 42%),
+    var(--bg);
+  background-attachment: fixed;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .app {
   max-width: 520px;
+  min-height: 100dvh;
   margin: 0 auto;
-  padding: 16px;
+  padding: 16px 16px max(16px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .toolbar {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: 10px;
 }
 
 .toolbar h1 {
-  font-size: 1.25rem;
   margin: 0 auto 0 0;
+  font-family: var(--font-digits);
+  font-size: 1.6rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--accent);
+}
+
+.toolbar h1 span {
+  color: var(--text);
 }
 
 button,
 select {
   font: inherit;
-  color: inherit;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 6px 10px;
+  font-weight: 650;
+  color: var(--text);
+  background: var(--key);
+  border: 0;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 var(--key-edge-width) 0 var(--key-edge);
+  padding: 7px 14px;
   cursor: pointer;
+  transition:
+    translate var(--duration-press) var(--ease-out),
+    box-shadow var(--duration-press) var(--ease-out);
+}
+
+/* Pressing pushes the button onto its edge. Uses `translate`, so animations on `transform` still compose. */
+button:active:not(:disabled) {
+  translate: 0 calc(var(--key-edge-width) - 1px);
+  box-shadow: 0 1px 0 var(--key-edge);
+}
+
+button:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
 }
 
 button:disabled {
-  opacity: 0.35;
   cursor: default;
+}
+
+.button--primary {
+  color: var(--accent-contrast);
+  background: var(--accent);
+}
+
+.game-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.game-bar select {
+  padding: 4px 12px;
+  font-size: 0.9rem;
 }
 
 .status {
   margin: 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
   color: var(--muted);
+  font-weight: 600;
+}
+
+.status__chip {
+  padding: 3px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.status__mistakes {
+  display: inline-block;
+  min-width: 1ch;
+  text-align: center;
+  color: var(--text);
 }
 
 .hint {
@@ -56,7 +126,19 @@ button:disabled {
   color: var(--muted);
 }
 
-.status__mistakes {
-  min-width: 1ch;
-  text-align: center;
+/* Touch screens have no keyboard: hide the shortcuts. */
+@media (hover: none) {
+  .hint {
+    display: none;
+  }
+}
+
+/* Hidden on screen, still read by screen readers. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

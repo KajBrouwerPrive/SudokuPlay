@@ -1,45 +1,131 @@
-/* The number pad and tool buttons. */
+/* The number pad and tool buttons: chunky keys that sink onto their edge when pressed. */
 .pad {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.pad__tools {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+}
+
+.pad__tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px 6px;
+  border-radius: var(--radius-key);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.pad__tool .icon {
+  color: var(--text);
+}
+
+/* Notes mode: the pencil key turns into the accent colour and its switch slides on. */
+.pad__tool--toggle[aria-pressed="true"] {
+  color: var(--accent-contrast);
+  background: var(--accent);
+}
+
+.pad__tool--toggle[aria-pressed="true"] .icon {
+  color: var(--accent-contrast);
+}
+
+.pad__switch {
+  position: relative;
+  width: 26px;
+  height: 8px;
+  margin-top: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--key-edge);
+}
+
+.pad__switch::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: translate var(--duration-cursor) var(--ease-out);
+}
+
+.pad__tool--toggle[aria-pressed="true"] .pad__switch::after {
+  translate: 18px 0;
 }
 
 .pad__digits {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
-  gap: 4px;
+  gap: 6px;
 }
 
 .pad__digit {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 6px 0;
+  gap: 1px;
+  min-width: 0;
+  padding: 8px 0 6px;
+  border-radius: var(--radius-key);
 }
 
 .pad__value {
-  font-size: 1.3rem;
+  font-family: var(--font-digits);
+  font-size: clamp(1.25rem, 5.6vw, 1.6rem);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--entered);
+}
+
+/* In notes mode the digits shrink a little, like pencil marks. */
+.pad--notes .pad__value {
+  font-family: var(--font-ui);
+  font-size: clamp(1rem, 4.4vw, 1.25rem);
+  font-weight: 800;
+  color: var(--muted);
 }
 
 .pad__remaining {
   font-size: 0.7rem;
+  font-weight: 700;
   color: var(--muted);
 }
 
-.pad__tools {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
+/* A finished digit sinks flat and shows a check. */
+.pad__digit--done {
+  background: var(--key-done);
+  box-shadow: 0 1px 0 var(--key-edge);
+  translate: 0 calc(var(--key-edge-width) - 1px);
 }
 
-.pad__tools .is-active {
-  border-color: var(--accent);
-  color: var(--accent);
+.pad__digit--done .pad__value {
+  color: var(--muted);
 }
 
-/* Celebrations */
 .pad__digit--done .pad__remaining {
   color: var(--accent);
-  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+/* On phones the pad rests at the bottom of the screen, within thumb reach. */
+@media (max-width: 600px) {
+  .pad {
+    position: sticky;
+    bottom: 0;
+    margin: auto -16px 0;
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+    border-radius: var(--radius-board) var(--radius-board) 0 0;
+    background: var(--surface);
+    box-shadow: 0 -8px 24px rgba(58, 46, 74, 0.12);
+    z-index: 2;
+  }
 }

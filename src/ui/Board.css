@@ -1,48 +1,68 @@
-/* The board, its cells, the selection cursor and the animation fx layer. */
+/* The board, its cells, the selection cursor and the animation fx layer.
+   Look: a peach tray holding nine box islands of rounded tiles; each tile stands on a darker edge. */
+.board-frame {
+  position: relative;
+}
+
 .board {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: var(--box-gap);
+  padding: var(--board-padding);
   aspect-ratio: 1;
-  border: 2px solid var(--line-strong);
-  background: var(--surface);
+  border-radius: var(--radius-board);
+  background: var(--tray);
+  box-shadow: var(--shadow-soft);
   user-select: none;
 }
 
+.board__box {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: var(--cell-gap);
+  padding: var(--cell-gap);
+  border-radius: var(--radius-box);
+  background: var(--box);
+  min-width: 0;
+  min-height: 0;
+}
+
 .cell {
-  border: 0;
-  border-radius: 0;
-  border-right: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  padding: 0;
-  font-size: clamp(1rem, 5vw, 1.6rem);
-  color: var(--entered);
-  background: var(--surface);
+  position: relative;
   display: grid;
   place-items: center;
   min-width: 0;
-  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  /* A border, not a shadow, for the edge: animations use box-shadow and would hide it. */
+  border-bottom: var(--tile-edge-width) solid var(--tile-edge);
+  border-radius: var(--radius-tile);
+  box-shadow: none;
+  background: var(--tile);
+  font-family: var(--font-digits);
+  font-size: clamp(1.1rem, 5.4vw, 1.75rem);
+  font-weight: 500;
+  line-height: 1;
+  color: var(--entered);
+  transition: background-color 120ms ease-out;
 }
 
-.cell--box-right {
-  border-right: 2px solid var(--line-strong);
+/* Cells do not sink like keys: the gliding cursor already answers the tap. */
+.cell:active:not(:disabled) {
+  translate: none;
+  box-shadow: none;
 }
 
-.cell--box-bottom {
-  border-bottom: 2px solid var(--line-strong);
-}
-
-.cell:nth-child(9n) {
-  border-right: 0;
-}
-
-.cell:nth-child(n + 73) {
-  border-bottom: 0;
+.cell:focus-visible {
+  outline: none;
 }
 
 .cell--given {
   color: var(--given);
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .cell--peer {
@@ -58,38 +78,59 @@
   background: var(--conflict-bg);
 }
 
-/* The selected cell is shown by the gliding .selection-cursor, so it keeps its own background. */
+/* Colour is not the only signal: a wavy underline marks a clashing digit. */
+.cell--conflict .cell__value {
+  text-decoration: underline wavy var(--conflict);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.cell__value,
+.notes > span {
+  display: inline-block;
+}
 
 .notes {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   width: 100%;
   height: 100%;
-  font-size: clamp(0.5rem, 2vw, 0.7rem);
-  color: var(--muted);
+  padding: 2px;
   place-items: center;
+  font-family: var(--font-ui);
+  font-size: clamp(0.5rem, 2.1vw, 0.72rem);
+  font-weight: 700;
+  color: var(--muted);
 }
 
-/* Animation support: the fx layer holds temporary ghosts; animated parts need to be transformable boxes. */
-.board-frame {
-  position: relative;
+/* Selection cursor: one element that glides between cells; positioned by Board.tsx. */
+.selection-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 3px solid var(--accent);
+  border-radius: var(--radius-tile);
+  background: var(--accent-glow);
+  pointer-events: none;
+  z-index: 1;
+  transition:
+    transform var(--duration-cursor) var(--ease-out),
+    width var(--duration-cursor) var(--ease-out),
+    height var(--duration-cursor) var(--ease-out);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .selection-cursor {
+    transition: none;
+  }
+}
+
+/* Animation support: the fx layer holds temporary ghosts and the confetti canvas. */
 .fx-layer {
   position: absolute;
   inset: 0;
   pointer-events: none;
   overflow: visible;
-}
-
-.cell {
-  position: relative;
-}
-
-.cell__value,
-.notes > span,
-.status__mistakes {
-  display: inline-block;
 }
 
 .fx-ghost {
@@ -100,18 +141,22 @@
 }
 
 .fx-ghost--value {
-  font-size: clamp(1rem, 5vw, 1.6rem);
+  font-family: var(--font-digits);
+  font-size: clamp(1.1rem, 5.4vw, 1.75rem);
+  font-weight: 500;
   color: var(--entered);
 }
 
 .fx-ghost--note {
-  font-size: clamp(0.5rem, 2vw, 0.7rem);
+  font-family: var(--font-ui);
+  font-size: clamp(0.5rem, 2.1vw, 0.72rem);
+  font-weight: 700;
   color: var(--muted);
 }
 
 .fx-ring {
   position: absolute;
-  border: 2px solid var(--accent);
+  border: 3px solid var(--gold);
   border-radius: 50%;
 }
 
@@ -124,46 +169,33 @@
   z-index: 10;
 }
 
+/* The solved card: a sticker slapped on the board, slightly askew. */
 .solved-card {
   position: absolute;
   inset: 50% auto auto 50%;
   translate: -50% -50%;
+  rotate: -3deg;
   z-index: 5;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 20px 28px;
-  border-radius: 16px;
+  gap: 10px;
+  padding: 22px 32px 24px;
+  border-radius: 24px;
   background: var(--surface);
-  border: 2px solid var(--accent);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  border: 4px solid var(--gold);
+  box-shadow: var(--shadow-card);
   text-align: center;
+  font-weight: 650;
+}
+
+.solved-card > span {
+  white-space: nowrap;
 }
 
 .solved-card__title {
-  font-size: 1.8rem;
+  font-family: var(--font-digits);
+  font-size: 2.2rem;
+  font-weight: 650;
   color: var(--accent);
-}
-
-/* Selection cursor: one element that glides between cells. */
-.selection-cursor {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: calc(100% / 9);
-  height: calc(100% / 9);
-  transform: translate(calc(var(--column) * 100%), calc(var(--row) * 100%));
-  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1);
-  border: 3px solid var(--accent);
-  border-radius: 6px;
-  background: var(--selected-glow);
-  pointer-events: none;
-  z-index: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .selection-cursor {
-    transition: none;
-  }
 }
