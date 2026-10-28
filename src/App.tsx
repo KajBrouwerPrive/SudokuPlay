@@ -43,7 +43,7 @@ export function App() {
   const [session, dispatch] = useReducer(sessionReducer, undefined, () => createSession(createPuzzle(initialPuzzleOptions())));
   const { game, selected, notesMode, log, lastBatch } = session;
   const reducedMotion = usePrefersReducedMotion();
-  const { rootRef, fxLayerRef, playEvents, stopAll } = useAnimations(lastBatch, reducedMotion);
+  const { rootRef, fxLayerRef, playEvents, stopAll, setTimeScale } = useAnimations(lastBatch, reducedMotion);
   const cells = useMemo(() => cellViews(game, selected), [game, selected]);
   const remaining = useMemo(() => remainingByDigit(game), [game]);
 
@@ -121,7 +121,7 @@ export function App() {
 
       <p className="hint">Toetsen: 1-9 plaatsen, Shift+cijfer notitie, N notitiemodus, pijltjes bewegen, Backspace wissen, Ctrl+Z / Ctrl+Y.</p>
 
-      {import.meta.env.DEV && <DevPanel game={game} selected={selected} log={log} playEvents={playEvents} />}
+      {import.meta.env.DEV && <DevPanel game={game} selected={selected} log={log} playEvents={playEvents} setTimeScale={setTimeScale} />}
     </main>
   );
 }

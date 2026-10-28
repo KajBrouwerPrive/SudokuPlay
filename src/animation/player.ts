@@ -32,6 +32,8 @@ function selectorFor(target: CueTarget): string {
 
 export class CuePlayer {
   private readonly running = new Set<Animation>();
+  /** Playback speed for new cues; below 1 is slow motion, for tuning effects by eye. */
+  timeScale = 1;
 
   constructor(
     private readonly root: HTMLElement,
@@ -72,6 +74,7 @@ export class CuePlayer {
       // Show the first keyframe during the delay, so a delayed ghost does not flash in its end state.
       fill: "backwards",
     });
+    animation.playbackRate = this.timeScale;
     this.running.add(animation);
     const stopConfetti = element instanceof HTMLCanvasElement ? this.launchConfetti(element, anchor, cue.delayMs, animation) : null;
     const cleanUp = () => {

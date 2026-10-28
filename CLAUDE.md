@@ -7,7 +7,7 @@ A playful sudoku web app (PWA): Vite + React + TypeScript.
 - Grids are `Uint8Array(81)` in row-major order, `0` = empty. Candidates are 9-bit masks (`candidates.ts`).
 - The UI and animation layer only react to engine output: `applyAction(state, action)` in `game.ts` returns the next state plus `GameEvent`s in a fixed order (documented at the top of the file). Game rules never live in components; animations hang off events, not off state diffs.
 - Animations live in `src/animation/`: `choreograph(events)` (pure, tested) turns events into timed cues; `CuePlayer` plays them with the Web Animations API on elements found by `data-cell`, `data-note-digit`, `data-pad`, `data-control` and `data-board`. Things already gone from the state (erased digits, removed notes) are animated as ghosts in the board's fx layer; the finale's confetti is a canvas there too (`confetti.ts`). Effects animate only transform, opacity or box-shadow and each has a reduced-motion version (`effects.ts`).
-- In development, the dev panel under the board previews every animation without changing the game.
+- In development, the dev panel under the board previews every animation without changing the game and has a tempo control (slow motion) for tuning. Timing lives in `effects.ts` (durations) and `choreograph.ts` (delays and staggers).
 - Randomness in the engine is always seeded, so puzzles and tests are reproducible.
 - Difficulty = the hardest human technique `gradePuzzle` needs (`logic.ts`, easiest first). The same `LogicStep`s will drive hints.
 - The app gets puzzles from `createPuzzle` (`puzzleBank.ts`): a bank puzzle picked by seed plus a random validity-preserving transform. The generator is too slow for expert puzzles at runtime, so it only runs offline.

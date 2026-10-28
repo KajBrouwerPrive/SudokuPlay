@@ -21,7 +21,8 @@ export function usePrefersReducedMotion(): boolean {
  * Plays the animations for each new event batch. Runs in a layout effect, so a placed digit
  * starts at its first keyframe instead of flashing at full size for one frame.
  * Returns the refs to attach, `playEvents` for previewing effects without changing the game, and
- * `stopAll` to end every running effect (call it before starting a new game).
+ * `stopAll` to end every running effect (call it before starting a new game) and `setTimeScale`
+ * for slow motion while tuning.
  */
 export function useAnimations(batch: EventBatch | null, reducedMotion: boolean) {
   const rootRef = useRef<HTMLElement>(null);
@@ -29,9 +30,13 @@ export function useAnimations(batch: EventBatch | null, reducedMotion: boolean) 
   const playerRef = useRef<CuePlayer | null>(null);
   // StrictMode runs effects twice in development; remember what already played.
   const playedBatchRef = useRef<number | null>(null);
+  const timeScaleRef = useRef(1);
 
   const player = useCallback((): CuePlayer | null => {
-    if (!playerRef.current && rootRef.current && fxLayerRef.current) playerRef.current = new CuePlayer(rootRef.current, fxLayerRef.current);
+    if (!playerRef.current && rootRef.current && fxLayerRef.current) {
+      playerRef.current = new CuePlayer(rootRef.current, fxLayerRef.current);
+      playerRef.current.timeScale = timeScaleRef.current;
+    }
     return playerRef.current;
   }, []);
 
@@ -53,5 +58,14 @@ export function useAnimations(batch: EventBatch | null, reducedMotion: boolean) 
 
   const stopAll = useCallback(() => playerRef.current?.finishAll(), []);
 
-  return { rootRef, fxLayerRef, playEvents, stopAll };
+  const setTimeScale = useCallback(
+    (scale: number) => {
+      timeScaleRef.current = scale;
+      const current = player();
+      if (current) current.timeScale = scale;
+    },
+    [player],
+  );
+
+  return { rootRef, fxLayerRef, playEvents, stopAll, setTimeScale };
 }

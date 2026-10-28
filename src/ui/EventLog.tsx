@@ -14,7 +14,7 @@ function describe(event: GameEvent): string {
 
 export function EventLog({ log }: { log: LoggedEvent[] }) {
   return (
-    <details className="event-log" open>
+    <details className="event-log">
       <summary>Engine-events</summary>
       {log.length === 0 ? (
         <p className="event-log__empty">Nog geen events.</p>

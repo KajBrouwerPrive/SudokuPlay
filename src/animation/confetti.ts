@@ -79,17 +79,18 @@ export function drawParticles(context: CanvasRenderingContext2D, particles: read
 
 /**
  * Animates a burst on `canvas` (sized to the viewport) until `stop` is called. `localTimeMs`
- * reports the driving animation's time, so the burst waits out the cue's delay and stays in step
- * with its fade-out.
+ * reports the driving animation's time, so the burst waits out the cue's delay, stays in step
+ * with its fade-out and follows its playback rate.
  */
 export function runConfetti(canvas: HTMLCanvasElement, particles: Particle[], delayMs: number, localTimeMs: () => number): () => void {
   const context = canvas.getContext("2d");
   if (!context) return () => {};
   let frame = 0;
   let lastTime: number | null = null;
-  const draw = (now: number) => {
+  const draw = () => {
     frame = requestAnimationFrame(draw);
-    if (localTimeMs() < delayMs) return;
+    const now = localTimeMs();
+    if (now < delayMs) return;
     if (lastTime !== null) stepParticles(particles, (now - lastTime) / 1000);
     lastTime = now;
     // Measured every frame: the viewport may change (rotation) or be empty while the tab is hidden.

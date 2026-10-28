@@ -8,6 +8,9 @@ import type { LoggedEvent } from "./session";
 /** Where previews play when no cell is selected: the centre. */
 const DEFAULT_CELL = 40;
 const DEFAULT_DIGIT: Digit = 5;
+/** Playback speeds offered for tuning; they apply to previews and real moves alike. */
+const TIME_SCALES = [0.1, 0.25, 0.5, 1, 2] as const;
+const NORMAL_TIME_SCALE = 1;
 
 interface Preview {
   label: string;
@@ -71,10 +74,16 @@ interface DevPanelProps {
   selected: number | null;
   log: LoggedEvent[];
   playEvents: (events: GameEvent[], reducedMotion: boolean) => void;
+  setTimeScale: (scale: number) => void;
 }
 
-export function DevPanel({ game, selected, log, playEvents }: DevPanelProps) {
+export function DevPanel({ game, selected, log, playEvents, setTimeScale }: DevPanelProps) {
   const [reducedPreview, setReducedPreview] = useState(false);
+  const [timeScale, setTimeScaleState] = useState<number>(NORMAL_TIME_SCALE);
+  const changeTimeScale = (scale: number) => {
+    setTimeScaleState(scale);
+    setTimeScale(scale);
+  };
   const cell = selected ?? DEFAULT_CELL;
   const digit = (game.values[cell] || DEFAULT_DIGIT) as Digit;
   return (
@@ -91,6 +100,16 @@ export function DevPanel({ game, selected, log, playEvents }: DevPanelProps) {
         <label className="dev-panel__toggle">
           <input type="checkbox" checked={reducedPreview} onChange={(event) => setReducedPreview(event.target.checked)} /> Rustige modus
           (reduced motion)
+        </label>
+        <label className="dev-panel__toggle">
+          Tempo{" "}
+          <select value={timeScale} onChange={(event) => changeTimeScale(Number(event.target.value))}>
+            {TIME_SCALES.map((scale) => (
+              <option key={scale} value={scale}>
+                {scale === NORMAL_TIME_SCALE ? "normaal" : `${scale}×`}
+              </option>
+            ))}
+          </select>
         </label>
       </details>
       <EventLog log={log} />
