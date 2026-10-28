@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { CLASSIC_PUZZLE, CLASSIC_SOLUTION } from "../engine/__fixtures__/puzzles";
 import { AwardReason, BASE_POINTS, Difficulty, EMPTY, GameEventType, GameStatus, parseGrid, type Digit, type Puzzle } from "../engine";
 import { CommandType, Direction, type Command } from "./controls";
-import { EVENT_LOG_LIMIT, SessionActionType, createSession, sessionReducer, type Session } from "./session";
+import { GameOutcome } from "../stats/stats";
+import { EVENT_LOG_LIMIT, SessionActionType, createSession, isAbandonable, sessionReducer, toGameRecord, type Session } from "./session";
 
 const PUZZLE: Puzzle = { puzzle: parseGrid(CLASSIC_PUZZLE), solution: parseGrid(CLASSIC_SOLUTION), difficulty: Difficulty.Easy, seed: 7 };
 
@@ -115,6 +116,30 @@ describe("sessionReducer", () => {
 
     it("starts a new game with nothing armed", () => {
       expect(sessionReducer(arm(createSession(PUZZLE), 4), { type: SessionActionType.NewGame, puzzle: PUZZLE }).armedDigit).toBeNull();
+    });
+  });
+
+  describe("game records", () => {
+    it("counts a game as abandoned only after a move", () => {
+      const fresh = createSession(PUZZLE);
+      expect(isAbandonable(fresh)).toBe(false);
+      expect(isAbandonable(command(select(fresh, 2), { type: CommandType.Input, digit: 4, asNote: false }))).toBe(true);
+    });
+
+    it("records difficulty, points, time, mistakes and hints", () => {
+      let session = command(select(createSession(PUZZLE), 2), { type: CommandType.Input, digit: 4, asNote: false });
+      session = sessionReducer(session, { type: SessionActionType.Tick, elapsedMs: 61_000.4 });
+      const finishedAt = new Date(2026, 9, 28, 12, 0);
+      expect(toGameRecord(session, GameOutcome.Abandoned, finishedAt)).toEqual({
+        finishedAt: finishedAt.toISOString(),
+        difficulty: Difficulty.Easy,
+        seed: 7,
+        points: BASE_POINTS[Difficulty.Easy],
+        mistakes: 0,
+        hints: 0,
+        durationMs: 61_000,
+        outcome: GameOutcome.Abandoned,
+      });
     });
   });
 

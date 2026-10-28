@@ -82,6 +82,17 @@ button:disabled {
   cursor: default;
 }
 
+/* The game stays mounted while the stats page shows; `hidden` must beat the flex layout. */
+.app[hidden] {
+  display: none;
+}
+
+.button--icon {
+  display: grid;
+  place-items: center;
+  padding: 7px 10px;
+}
+
 .button--primary {
   color: var(--accent-contrast);
   background: var(--accent);

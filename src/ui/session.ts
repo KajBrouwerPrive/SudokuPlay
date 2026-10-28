@@ -19,6 +19,7 @@ import {
   type Puzzle,
   type Score,
 } from "../engine";
+import type { GameOutcome, GameRecord } from "../stats/stats";
 import { CommandType, inputAction, moveSelection, type Command } from "./controls";
 
 /** Events kept for the on-screen log; enough to follow a few moves back. */
@@ -164,4 +165,23 @@ export function sessionReducer(session: Session, action: SessionAction): Session
     case SessionActionType.Tick:
       return session.game.status === GameStatus.Playing ? { ...session, elapsedMs: session.elapsedMs + action.elapsedMs } : session;
   }
+}
+
+/** Whether leaving this game now should count as a game played: a move was made and it is unsolved. */
+export function isAbandonable(session: Session): boolean {
+  return session.game.status === GameStatus.Playing && session.game.undoStack.length > 0;
+}
+
+export function toGameRecord(session: Session, outcome: GameOutcome, finishedAt: Date): GameRecord {
+  const { game, score, elapsedMs } = session;
+  return {
+    finishedAt: finishedAt.toISOString(),
+    difficulty: game.difficulty,
+    seed: game.seed,
+    points: score.points,
+    mistakes: game.mistakes,
+    hints: game.hints,
+    durationMs: Math.round(elapsedMs),
+    outcome,
+  };
 }

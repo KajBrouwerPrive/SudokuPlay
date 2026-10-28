@@ -45,3 +45,12 @@ export const BulbIcon = () => (
     <path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V17h6v-.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 2Z" />
   </Icon>
 );
+
+export const ChartIcon = () => (
+  <Icon>
+    <path d="M4 20V10" />
+    <path d="M10 20V4" />
+    <path d="M16 20v-7" />
+    <path d="M22 20H2" />
+  </Icon>
+);

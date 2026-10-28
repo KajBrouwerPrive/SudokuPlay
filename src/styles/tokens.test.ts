@@ -13,6 +13,7 @@ const TEXT_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ["--text", "--bg"],
   ["--text", "--surface"],
   ["--muted", "--bg"],
+  ["--muted", "--surface"],
   ["--muted", "--tile"],
   ["--muted", "--peer"],
   ["--given", "--tile"],
