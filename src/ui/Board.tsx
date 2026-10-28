@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode, Ref } from "react";
+import "./Board.css";
 import { BOX_SIZE, DIGITS, columnOf, rowOf } from "../engine";
 import type { CellView } from "./controls";
 

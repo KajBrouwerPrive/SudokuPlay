@@ -1,94 +1,4 @@
-/* Plain playground styling; the playful look comes in phase 5. */
-:root {
-  --bg: #f6f5f2;
-  --surface: #ffffff;
-  --text: #1d1d1f;
-  --muted: #6b6b70;
-  --line: #c9c7c2;
-  --line-strong: #2b2b2e;
-  --given: #1d1d1f;
-  --entered: #2457c5;
-  --peer: #eceae4;
-  --same-digit: #d7e3fb;
-  --selected-glow: rgba(36, 87, 197, 0.12);
-  --conflict: #c62828;
-  --conflict-bg: #fde4e4;
-  --accent: #2457c5;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  color: var(--text);
-  background: var(--bg);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #161618;
-    --surface: #1f1f22;
-    --text: #ececef;
-    --muted: #9a9aa2;
-    --line: #3a3a40;
-    --line-strong: #c9c9cf;
-    --given: #ececef;
-    --entered: #8fb0ff;
-    --peer: #26262b;
-    --same-digit: #23324f;
-    --selected-glow: rgba(143, 176, 255, 0.14);
-    --conflict: #ff8a80;
-    --conflict-bg: #4a2020;
-    --accent: #8fb0ff;
-  }
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--bg);
-}
-
-.app {
-  max-width: 520px;
-  margin: 0 auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-}
-
-.toolbar h1 {
-  font-size: 1.25rem;
-  margin: 0 auto 0 0;
-}
-
-button,
-select {
-  font: inherit;
-  color: inherit;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 6px 10px;
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.status {
-  margin: 0;
-  color: var(--muted);
-}
-
+/* The board, its cells, the selection cursor and the animation fx layer. */
 .board {
   position: relative;
   display: grid;
@@ -160,80 +70,6 @@ button:disabled {
   place-items: center;
 }
 
-.pad {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.pad__digits {
-  display: grid;
-  grid-template-columns: repeat(9, 1fr);
-  gap: 4px;
-}
-
-.pad__digit {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 6px 0;
-}
-
-.pad__value {
-  font-size: 1.3rem;
-}
-
-.pad__remaining {
-  font-size: 0.7rem;
-  color: var(--muted);
-}
-
-.pad__tools {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-}
-
-.pad__tools .is-active {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.hint {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.event-log {
-  font-size: 0.8rem;
-}
-
-.event-log ol {
-  margin: 4px 0 0;
-  padding-left: 20px;
-  max-height: 240px;
-  overflow: auto;
-  font-family: ui-monospace, Consolas, monospace;
-}
-
-.event-log__empty {
-  color: var(--muted);
-}
-
-.event-log__item--mistakeMade,
-.event-log__item--conflictDetected,
-.event-log__item--moveRejected {
-  color: var(--conflict);
-}
-
-.event-log__item--unitCompleted,
-.event-log__item--digitCompleted,
-.event-log__item--puzzleSolved {
-  color: var(--accent);
-  font-weight: 600;
-}
-
 /* Animation support: the fx layer holds temporary ghosts; animated parts need to be transformable boxes. */
 .board-frame {
   position: relative;
@@ -254,11 +90,6 @@ button:disabled {
 .notes > span,
 .status__mistakes {
   display: inline-block;
-}
-
-.status__mistakes {
-  min-width: 1ch;
-  text-align: center;
 }
 
 .fx-ghost {
@@ -282,30 +113,6 @@ button:disabled {
   position: absolute;
   border: 2px solid var(--accent);
   border-radius: 50%;
-}
-
-.dev-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 0.8rem;
-}
-
-.dev-panel__buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin: 6px 0;
-}
-
-.dev-panel__buttons button {
-  padding: 4px 8px;
-}
-
-/* Celebrations */
-.pad__digit--done .pad__remaining {
-  color: var(--accent);
-  font-weight: 700;
 }
 
 .fx-confetti {

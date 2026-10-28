@@ -1,0 +1,45 @@
+/* The number pad and tool buttons. */
+.pad {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pad__digits {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 4px;
+}
+
+.pad__digit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.pad__value {
+  font-size: 1.3rem;
+}
+
+.pad__remaining {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.pad__tools {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.pad__tools .is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Celebrations */
+.pad__digit--done .pad__remaining {
+  color: var(--accent);
+  font-weight: 700;
+}

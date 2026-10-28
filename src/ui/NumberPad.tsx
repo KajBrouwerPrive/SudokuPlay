@@ -1,5 +1,6 @@
 import { Control } from "../animation/choreograph";
 import { DIGITS, type Digit } from "../engine";
+import "./NumberPad.css";
 
 /** Shown instead of the remaining count once all nine copies are placed. */
 const DONE_MARK = "✓";

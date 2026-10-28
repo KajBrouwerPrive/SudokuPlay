@@ -1,0 +1,47 @@
+/* Development-only panel: animation playground and event log. */
+.event-log {
+  font-size: 0.8rem;
+}
+
+.event-log ol {
+  margin: 4px 0 0;
+  padding-left: 20px;
+  max-height: 240px;
+  overflow: auto;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.event-log__empty {
+  color: var(--muted);
+}
+
+.event-log__item--mistakeMade,
+.event-log__item--conflictDetected,
+.event-log__item--moveRejected {
+  color: var(--conflict);
+}
+
+.event-log__item--unitCompleted,
+.event-log__item--digitCompleted,
+.event-log__item--puzzleSolved {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.dev-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.dev-panel__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0;
+}
+
+.dev-panel__buttons button {
+  padding: 4px 8px;
+}
