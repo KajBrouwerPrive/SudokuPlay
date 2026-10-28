@@ -5,7 +5,7 @@ A playful sudoku web app (PWA): Vite + React + TypeScript.
 ## Architecture
 - `src/engine/` is the sudoku engine: pure TypeScript, no React or DOM imports. Keep it that way, so it stays testable and can move to a native app later.
 - Grids are `Uint8Array(81)` in row-major order, `0` = empty. Candidates are 9-bit masks (`candidates.ts`).
-- The UI and animation layer only react to engine output (state plus events, from the game reducer in a later phase); game rules never live in components.
+- The UI and animation layer only react to engine output: `applyAction(state, action)` in `game.ts` returns the next state plus `GameEvent`s in a fixed order (documented at the top of the file). Game rules never live in components; animations hang off events, not off state diffs.
 - Randomness in the engine is always seeded, so puzzles and tests are reproducible.
 - Difficulty = the hardest human technique `gradePuzzle` needs (`logic.ts`, easiest first). The same `LogicStep`s will drive hints.
 - The app gets puzzles from `createPuzzle` (`puzzleBank.ts`): a bank puzzle picked by seed plus a random validity-preserving transform. The generator is too slow for expert puzzles at runtime, so it only runs offline.
