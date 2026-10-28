@@ -1,11 +1,15 @@
-import { useLayoutEffect, useRef, type ReactNode, type Ref } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import { BOXES, DIGITS, columnOf, rowOf } from "../engine";
 import "./Board.css";
 import type { CellView } from "./controls";
+import { LongPressTracker } from "./longPress";
+
+/** A short buzz confirms a long press on phones that support it. */
+const LONG_PRESS_VIBRATION_MS = 12;
 
 interface BoardProps {
   cells: CellView[];
-  /** A click on a cell; `secondary` is the right mouse button. */
+  /** A click on a cell; `secondary` is the right mouse button or a long press on a touch screen. */
   onPress: (cell: number, secondary: boolean) => void;
   /** Layer over the board for temporary animation elements; React never renders into it. */
   fxLayerRef: Ref<HTMLDivElement>;
@@ -79,6 +83,8 @@ function useSelectionCursor(selected: number) {
 export function Board({ cells, onPress, fxLayerRef, overlay }: BoardProps) {
   const selected = cells.findIndex((view) => view.selected);
   const { boardRef, cursorRef } = useSelectionCursor(selected);
+  const [longPress] = useState(() => new LongPressTracker());
+  useEffect(() => () => longPress.cancel(), [longPress]);
   return (
     <div className="board-frame">
       <div ref={boardRef} className="board" data-board role="group" aria-label="Sudoku">
@@ -93,12 +99,24 @@ export function Board({ cells, onPress, fxLayerRef, overlay }: BoardProps) {
                   data-cell={cell}
                   className={cellClassName(view)}
                   aria-label={cellLabel(cell, view)}
-                  onClick={() => onPress(cell, false)}
+                  onClick={() => {
+                    if (!longPress.consumeClick()) onPress(cell, false);
+                  }}
                   onContextMenu={(event) => {
                     // The right button notes the armed digit instead of opening the browser menu.
                     event.preventDefault();
-                    onPress(cell, true);
+                    if (!longPress.ownsContextMenu()) onPress(cell, true);
                   }}
+                  onPointerDown={(event) =>
+                    longPress.down(event, () => {
+                      navigator.vibrate?.(LONG_PRESS_VIBRATION_MS);
+                      onPress(cell, true);
+                    })
+                  }
+                  onPointerMove={(event) => longPress.move(event)}
+                  onPointerUp={() => longPress.cancel()}
+                  onPointerLeave={() => longPress.cancel()}
+                  onPointerCancel={() => longPress.cancel()}
                 >
                   {view.value ? (
                     // Keyed by digit so a new digit gets a fresh element to animate.

@@ -131,7 +131,7 @@ export function App() {
       />
 
       <p className="hint">
-        Muis: kies onderin een cijfer, dan linksklik plaatsen en rechtsklik notitie (Esc laat los). Toetsen: 1-9 plaatsen, Shift+cijfer notitie,
+        Muis: kies onderin een cijfer, dan linksklik (of tik) plaatsen en rechtsklik (of lang indrukken) notitie (Esc laat los). Toetsen: 1-9 plaatsen, Shift+cijfer notitie,
         N notitiemodus, pijltjes bewegen, Backspace wissen, Ctrl+Z / Ctrl+Y.
       </p>
 

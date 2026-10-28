@@ -16,6 +16,9 @@
   background: var(--tray);
   box-shadow: var(--shadow-soft);
   user-select: none;
+  /* No iOS callout or double-tap zoom: a long press on a cell is a game action. */
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .board__box {
