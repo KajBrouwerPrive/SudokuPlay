@@ -20,6 +20,7 @@ interface BoardProps {
 function cellClassName(view: CellView): string {
   const classes = ["cell"];
   if (view.given) classes.push("cell--given");
+  if (view.hinted) classes.push("cell--hinted");
   if (view.peer) classes.push("cell--peer");
   if (view.sameDigit) classes.push("cell--same-digit");
   if (view.conflict) classes.push("cell--conflict");
@@ -29,7 +30,7 @@ function cellClassName(view: CellView): string {
 
 function cellLabel(cell: number, view: CellView): string {
   const position = `Rij ${rowOf(cell) + 1}, kolom ${columnOf(cell) + 1}`;
-  if (view.value) return `${position}: ${view.value}${view.given ? " (gegeven)" : ""}`;
+  if (view.value) return `${position}: ${view.value}${view.given ? " (gegeven)" : view.hinted ? " (hint)" : ""}`;
   return view.notes.length > 0 ? `${position}: leeg, notities ${view.notes.join(" ")}` : `${position}: leeg`;
 }
 

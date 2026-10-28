@@ -7,7 +7,7 @@
 
 .pad__tools {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
 }
 
@@ -60,6 +60,16 @@
 
 .pad__tool--toggle[aria-pressed="true"] .pad__switch::after {
   translate: 18px 0;
+}
+
+/* The hint key asks before it costs half the points: it turns gold and says so. */
+.pad__tool--confirming {
+  color: var(--text);
+  background: var(--gold);
+}
+
+.pad__tool--confirming .icon {
+  color: var(--text);
 }
 
 .pad__digits {

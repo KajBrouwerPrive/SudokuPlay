@@ -115,6 +115,27 @@ button:disabled {
   box-shadow: var(--shadow-soft);
 }
 
+.status__points {
+  display: inline-block;
+  font-family: var(--font-digits);
+  font-weight: 650;
+  color: var(--accent);
+}
+
+.status__combo {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--gold);
+  color: var(--text);
+  font-size: 0.85em;
+}
+
+.status__time {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
 .status__mistakes {
   display: inline-block;
   min-width: 1ch;

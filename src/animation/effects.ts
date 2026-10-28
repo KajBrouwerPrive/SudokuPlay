@@ -46,6 +46,14 @@ export const Effect = {
   Confetti: "confetti",
   /** The solved card springs in. */
   CardIn: "cardIn",
+  /** Points float up from where they were earned ("+15") or lost ("−15", "÷2"). */
+  ScorePop: "scorePop",
+  /** The score counter swells when points arrive. */
+  ScoreBump: "scoreBump",
+  /** The score counter squashes when a hint halves it. */
+  ScoreHalve: "scoreHalve",
+  /** Stars twinkle around a cell a hint filled. */
+  HintSparkle: "hintSparkle",
 } as const;
 export type Effect = (typeof Effect)[keyof typeof Effect];
 
@@ -62,6 +70,10 @@ export const EffectPart = {
   GhostValue: "ghostValue",
   GhostNote: "ghostNote",
   GhostRing: "ghostRing",
+  /** Floating score text. */
+  GhostScore: "ghostScore",
+  /** A burst of stars around a cell. */
+  GhostSparkle: "ghostSparkle",
   /** A full-screen canvas with particles; the keyframes only fade the canvas out. */
   Confetti: "confetti",
 } as const;
@@ -301,6 +313,47 @@ export const EFFECTS: Readonly<Record<Effect, EffectSpec>> = {
       { transform: "translateY(0) scale(1)", opacity: 1 },
     ],
     reducedKeyframes: fadeIn,
+  },
+  [Effect.ScorePop]: {
+    part: EffectPart.GhostScore,
+    durationMs: 900,
+    easing: EASE_OUT,
+    keyframes: [
+      { transform: "translateY(0) scale(0.6)", opacity: 0 },
+      { transform: "translateY(-14px) scale(1.15)", opacity: 1, offset: 0.25 },
+      { transform: "translateY(-34px) scale(1)", opacity: 0 },
+    ],
+    reducedKeyframes: [{ opacity: 0 }, { opacity: 1, offset: 0.25 }, { opacity: 0 }],
+  },
+  [Effect.ScoreBump]: {
+    part: EffectPart.Control,
+    durationMs: 300,
+    easing: EASE_OUT,
+    keyframes: [{ transform: "scale(1)" }, { transform: "scale(1.25)", offset: 0.35 }, { transform: "scale(1)" }],
+    reducedKeyframes: blink,
+  },
+  [Effect.ScoreHalve]: {
+    part: EffectPart.Control,
+    durationMs: 520,
+    easing: EASE_IN_OUT,
+    keyframes: [
+      { transform: "scale(1)" },
+      { transform: "scale(1.3, 0.6)", offset: 0.3 },
+      { transform: "scale(0.85, 1.1)", offset: 0.6 },
+      { transform: "scale(1)" },
+    ],
+    reducedKeyframes: blink,
+  },
+  [Effect.HintSparkle]: {
+    part: EffectPart.GhostSparkle,
+    durationMs: 700,
+    easing: EASE_OUT,
+    keyframes: [
+      { transform: "scale(0.3) rotate(0deg)", opacity: 0 },
+      { transform: "scale(1.1) rotate(25deg)", opacity: 1, offset: 0.35 },
+      { transform: "scale(1.5) rotate(60deg)", opacity: 0 },
+    ],
+    reducedKeyframes: null,
   },
 };
 

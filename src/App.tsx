@@ -1,13 +1,16 @@
 // The game screen. Rules live in the engine, motion in src/animation; this only wires them together.
-import { useEffect, useMemo, useReducer } from "react";
+import { useCallback, useEffect, useMemo, useReducer } from "react";
 import { Control } from "./animation/choreograph";
 import { useAnimations, usePrefersReducedMotion } from "./animation/useAnimations";
-import { DIFFICULTIES, Difficulty, GameStatus, createPuzzle, remainingByDigit, type Digit } from "./engine";
+import { DIFFICULTIES, Difficulty, GameStatus, createPuzzle, multiplierFor, remainingByDigit, type Digit } from "./engine";
 import { Board } from "./ui/Board";
 import { CommandType, cellViews, keyToCommand, type Command } from "./ui/controls";
 import { DevPanel } from "./ui/DevPanel";
+import { formatDuration, formatMultiplier, formatPoints } from "./ui/format";
 import { NumberPad } from "./ui/NumberPad";
 import { SessionActionType, createSession, sessionReducer } from "./ui/session";
+import { useHintConfirm } from "./ui/useHintConfirm";
+import { usePlayTimer } from "./ui/usePlayTimer";
 
 const SEED_PARAM = "seed";
 const DIFFICULTY_PARAM = "difficulty";
@@ -41,7 +44,7 @@ function rememberInUrl(difficulty: Difficulty, seed: number): void {
 
 export function App() {
   const [session, dispatch] = useReducer(sessionReducer, undefined, () => createSession(createPuzzle(initialPuzzleOptions())));
-  const { game, selected, notesMode, armedDigit, log, lastBatch } = session;
+  const { game, selected, notesMode, armedDigit, score, elapsedMs, log, lastBatch } = session;
   const reducedMotion = usePrefersReducedMotion();
   const { rootRef, fxLayerRef, playEvents, stopAll, setTimeScale } = useAnimations(lastBatch, reducedMotion);
   const cells = useMemo(() => cellViews(game, selected, armedDigit), [game, selected, armedDigit]);
@@ -49,17 +52,24 @@ export function App() {
 
   useEffect(() => rememberInUrl(game.difficulty, game.seed), [game.difficulty, game.seed]);
 
+  const onElapsed = useCallback((ms: number) => dispatch({ type: SessionActionType.Tick, elapsedMs: ms }), []);
+  usePlayTimer(game.status === GameStatus.Playing, onElapsed);
+  const giveHint = useCallback(() => dispatch({ type: SessionActionType.Command, command: { type: CommandType.Hint } }), []);
+  const hint = useHintConfirm(giveHint);
+  const multiplier = multiplierFor(score.combo);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLSelectElement) return;
       const command = keyToCommand(event, notesMode);
       if (!command) return;
       event.preventDefault();
-      dispatch({ type: SessionActionType.Command, command });
+      if (command.type === CommandType.Hint) hint.request();
+      else dispatch({ type: SessionActionType.Command, command });
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [notesMode]);
+  }, [notesMode, hint]);
 
   const run = (command: Command) => dispatch({ type: SessionActionType.Command, command });
   const startNewGame = (difficulty: Difficulty) => {
@@ -90,11 +100,21 @@ export function App() {
           </select>
         </label>
         <p className="status" role="status">
+          <span className="status__chip status__chip--score">
+            <span className="status__points" data-control={Control.Score}>
+              {formatPoints(score.points)}
+            </span>{" "}
+            punten
+            {multiplier > 1 && <span className="status__combo">{formatMultiplier(multiplier)}</span>}
+          </span>
           <span className="status__chip">
             Fouten{" "}
             <span className="status__mistakes" data-control={Control.Mistakes}>
               {game.mistakes}
             </span>
+          </span>
+          <span className="status__chip status__time" aria-label="Speeltijd">
+            {formatDuration(elapsedMs)}
           </span>
           {import.meta.env.DEV && <span className="status__chip">Seed {game.seed}</span>}
         </p>
@@ -108,8 +128,11 @@ export function App() {
           game.status === GameStatus.Solved && (
             <div className="solved-card" data-control={Control.SolvedCard} role="status">
               <strong className="solved-card__title">Opgelost!</strong>
+              <span className="solved-card__points">{formatPoints(score.points)} punten</span>
               <span>
-                {DIFFICULTY_LABELS[game.difficulty]} · {game.mistakes === 0 ? "zonder fouten" : `${game.mistakes} ${game.mistakes === 1 ? "fout" : "fouten"}`}
+                {DIFFICULTY_LABELS[game.difficulty]} · {formatDuration(elapsedMs)} ·{" "}
+                {game.mistakes === 0 ? "zonder fouten" : `${game.mistakes} ${game.mistakes === 1 ? "fout" : "fouten"}`}
+                {game.hints > 0 && ` · ${game.hints} ${game.hints === 1 ? "hint" : "hints"}`}
               </span>
               <button type="button" className="button--primary" onClick={() => startNewGame(game.difficulty)}>
                 Nog een
@@ -128,6 +151,8 @@ export function App() {
         onUndo={() => run({ type: CommandType.Undo })}
         onRedo={() => run({ type: CommandType.Redo })}
         onToggleNotes={() => run({ type: CommandType.ToggleNotesMode })}
+        hintConfirming={hint.confirming}
+        onHint={hint.request}
       />
 
       <p className="hint">

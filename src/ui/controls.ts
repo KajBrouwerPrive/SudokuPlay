@@ -33,6 +33,8 @@ export const CommandType = {
   ToggleNotesMode: "toggleNotesMode",
   /** Lets go of the digit armed on the number pad. */
   Disarm: "disarm",
+  /** Fills a cell for the player at the cost of half the points; the app confirms first. */
+  Hint: "hint",
 } as const;
 
 export type Command =
@@ -42,7 +44,8 @@ export type Command =
   | { type: typeof CommandType.Redo }
   | { type: typeof CommandType.Move; direction: Direction }
   | { type: typeof CommandType.ToggleNotesMode }
-  | { type: typeof CommandType.Disarm };
+  | { type: typeof CommandType.Disarm }
+  | { type: typeof CommandType.Hint };
 
 /** The parts of a KeyboardEvent the mapping needs, so tests can pass plain objects. */
 export interface KeyInput {
@@ -65,6 +68,7 @@ const ARROW_DIRECTIONS: Readonly<Record<string, Direction>> = {
 const ERASE_KEYS = new Set(["Backspace", "Delete", "0"]);
 const NOTES_MODE_KEY = "n";
 const DISARM_KEY = "Escape";
+const HINT_KEY = "h";
 const UNDO_KEY = "z";
 const REDO_KEY = "y";
 /** Matches the physical digit keys, so Shift+3 still reads as 3 on any layout. */
@@ -102,6 +106,7 @@ function commandForKey(input: KeyInput, notesMode: boolean): Command | null {
   if (ERASE_KEYS.has(input.key)) return { type: CommandType.Erase };
   if (key === NOTES_MODE_KEY) return { type: CommandType.ToggleNotesMode };
   if (input.key === DISARM_KEY) return { type: CommandType.Disarm };
+  if (key === HINT_KEY) return { type: CommandType.Hint };
   const digit = digitFrom(input);
   if (digit) return { type: CommandType.Input, digit, asNote: notesMode !== input.shiftKey };
   return null;
@@ -132,6 +137,8 @@ export interface CellView {
   value: Digit | null;
   notes: Digit[];
   given: boolean;
+  /** Filled by a hint; locked, and marked with a star. */
+  hinted: boolean;
   selected: boolean;
   /** Shares a row, column or box with the selected cell. */
   peer: boolean;
@@ -153,6 +160,7 @@ export function cellViews(state: GameState, selected: number | null, armedDigit:
       value: value === EMPTY ? null : (value as Digit),
       notes,
       given: state.givens[cell] !== EMPTY,
+      hinted: state.hinted[cell] === 1,
       selected: cell === selected,
       peer: peers.has(cell),
       sameDigit: highlightedDigit !== EMPTY && value === highlightedDigit,

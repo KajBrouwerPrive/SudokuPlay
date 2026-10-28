@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { GameEvent } from "../engine";
+import type { Award, GameEvent } from "../engine";
 import type { EventBatch } from "../ui/session";
 import { choreograph } from "./choreograph";
 import { CuePlayer } from "./player";
@@ -41,7 +41,7 @@ export function useAnimations(batch: EventBatch | null, reducedMotion: boolean) 
   }, []);
 
   const playEvents = useCallback(
-    (events: GameEvent[], reduced: boolean = reducedMotion) => player()?.play(choreograph(events), reduced),
+    (events: GameEvent[], reduced: boolean = reducedMotion, awards: Award[] = []) => player()?.play(choreograph(events, awards), reduced),
     [player, reducedMotion],
   );
 
@@ -53,8 +53,8 @@ export function useAnimations(batch: EventBatch | null, reducedMotion: boolean) 
     }
     if (playedBatchRef.current === batch.id) return;
     playedBatchRef.current = batch.id;
-    playEvents(batch.events);
-  }, [batch, playEvents]);
+    playEvents(batch.events, reducedMotion, batch.awards);
+  }, [batch, playEvents, reducedMotion]);
 
   const stopAll = useCallback(() => playerRef.current?.finishAll(), []);
 
