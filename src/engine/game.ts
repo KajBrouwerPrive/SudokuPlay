@@ -91,7 +91,8 @@ export type GameEvent =
   | { type: typeof GameEventType.ConflictDetected; cell: number; digit: Digit; conflictingCells: number[] }
   | { type: typeof GameEventType.MistakeMade; cell: number; digit: Digit; mistakes: number }
   | { type: typeof GameEventType.UnitCompleted; unit: Unit }
-  | { type: typeof GameEventType.DigitCompleted; digit: Digit }
+  /** `cells` holds all nine cells with this digit, in reading order. */
+  | { type: typeof GameEventType.DigitCompleted; digit: Digit; cells: number[] }
   | { type: typeof GameEventType.PuzzleSolved; mistakes: number }
   | { type: typeof GameEventType.MoveUndone; changedCells: number[] }
   | { type: typeof GameEventType.MoveRedone; changedCells: number[] }
@@ -157,6 +158,14 @@ function isCorrect(values: Grid, solution: Grid, cell: number): boolean {
   return values[cell] !== EMPTY && values[cell] === solution[cell];
 }
 
+function cellsWithDigit(grid: Grid, digit: Digit): number[] {
+  const cells: number[] = [];
+  grid.forEach((value, cell) => {
+    if (value === digit) cells.push(cell);
+  });
+  return cells;
+}
+
 function place(state: GameState, action: Extract<GameAction, { type: typeof ActionType.Place }>): GameTransition {
   const { cell, digit } = action;
   if (isGiven(state, cell)) return reject(state, action, RejectReason.GivenCell, cell);
@@ -184,8 +193,8 @@ function place(state: GameState, action: Extract<GameAction, { type: typeof Acti
     for (const unit of UNITS_OF_CELL[cell]) {
       if (unit.cells.every((member) => isCorrect(values, state.solution, member))) events.push({ type: GameEventType.UnitCompleted, unit });
     }
-    const placedCorrectly = values.filter((value, index) => value === digit && state.solution[index] === digit).length;
-    if (placedCorrectly === DIGITS.length) events.push({ type: GameEventType.DigitCompleted, digit });
+    const digitCells = cellsWithDigit(state.solution, digit);
+    if (digitCells.every((member) => values[member] === digit)) events.push({ type: GameEventType.DigitCompleted, digit, cells: digitCells });
   }
   if (solved) events.push({ type: GameEventType.PuzzleSolved, mistakes });
   return { state: next, events };

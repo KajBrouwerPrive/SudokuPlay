@@ -132,7 +132,7 @@ describe("completion events", () => {
     const cellsOfOne = Array.from({ length: CELL_COUNT }, (_, cell) => cell).filter((cell) => SOLUTION[cell] === 1);
     const actions = correctPlacements(game, cellsOfOne);
     expect(eventTypes(play(game, ...actions.slice(0, -1)).events)).not.toContain(GameEventType.DigitCompleted);
-    expect(play(game, ...actions).events).toContainEqual({ type: GameEventType.DigitCompleted, digit: 1 });
+    expect(play(game, ...actions).events).toContainEqual({ type: GameEventType.DigitCompleted, digit: 1, cells: cellsOfOne });
   });
 
   it("ends with the full choreography on the last cell, then refuses further moves", () => {
