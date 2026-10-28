@@ -1,4 +1,4 @@
-import type { ReactNode, Ref } from "react";
+import type { CSSProperties, ReactNode, Ref } from "react";
 import { BOX_SIZE, DIGITS, columnOf, rowOf } from "../engine";
 import type { CellView } from "./controls";
 
@@ -29,7 +29,13 @@ function cellLabel(cell: number, view: CellView): string {
   return view.notes.length > 0 ? `${position}: leeg, notities ${view.notes.join(" ")}` : `${position}: leeg`;
 }
 
+/** Grid position for the selection cursor, read by its CSS transform. */
+function cursorStyle(cell: number): CSSProperties {
+  return { "--row": rowOf(cell), "--column": columnOf(cell) } as CSSProperties;
+}
+
 export function Board({ cells, onSelect, fxLayerRef, overlay }: BoardProps) {
+  const selected = cells.findIndex((view) => view.selected);
   return (
     <div className="board-frame">
       <div className="board" data-board role="group" aria-label="Sudoku">
@@ -58,6 +64,8 @@ export function Board({ cells, onSelect, fxLayerRef, overlay }: BoardProps) {
             )}
           </button>
         ))}
+        {/* One cursor for the whole board, so a new selection glides there instead of jumping. */}
+        {selected >= 0 && <div className="selection-cursor" style={cursorStyle(selected)} aria-hidden="true" />}
       </div>
       {overlay}
       <div ref={fxLayerRef} className="fx-layer" aria-hidden="true" />
