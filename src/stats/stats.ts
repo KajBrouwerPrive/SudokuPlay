@@ -41,11 +41,16 @@ export interface LevelSummary {
   bestPoints: number | null;
   bestTimeMs: number | null;
   averageTimeMs: number | null;
+  /** Mistakes per finished game, solved or not; one decimal. */
+  averageMistakes: number | null;
 }
 
 export interface StatsSummary {
   gamesPlayed: number;
   gamesSolved: number;
+  /** Solved without a single mistake. */
+  flawlessSolved: number;
+  totalMistakes: number;
   totalPoints: number;
   levels: LevelSummary[];
   /** Solved games in a row, counting back from the latest game. */
@@ -146,6 +151,8 @@ export function summarize(data: StatsData, today: Date): StatsSummary {
   return {
     gamesPlayed: games.length,
     gamesSolved: solved.length,
+    flawlessSolved: solved.filter((game) => game.mistakes === 0).length,
+    totalMistakes: games.reduce((sum, game) => sum + game.mistakes, 0),
     totalPoints: solved.reduce((sum, game) => sum + game.points, 0),
     levels: DIFFICULTIES.map((difficulty) => {
       const level = games.filter((game) => game.difficulty === difficulty);
@@ -158,6 +165,7 @@ export function summarize(data: StatsData, today: Date): StatsSummary {
         bestPoints: maximum(levelSolved.map((game) => game.points)),
         bestTimeMs: minimum(times),
         averageTimeMs: average(times),
+        averageMistakes: level.length === 0 ? null : Math.round((level.reduce((sum, game) => sum + game.mistakes, 0) / level.length) * 10) / 10,
       };
     }),
     solvedStreak: streaks.current,

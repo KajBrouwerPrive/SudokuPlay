@@ -70,9 +70,18 @@ describe("summarize", () => {
       bestPoints: 120,
       bestTimeMs: 200_000,
       averageTimeMs: 300_000,
+      averageMistakes: 0,
     });
     expect(summary.levels.find((level) => level.difficulty === Difficulty.Medium)).toMatchObject({ played: 0, bestPoints: null, averageTimeMs: null });
     expect(summary).toMatchObject({ gamesPlayed: 4, gamesSolved: 3, totalPoints: 1010 });
+  });
+
+  it("counts mistakes: in total, on average per level, and flawless solves", () => {
+    const data = withGames(game({ mistakes: 0 }), game({ mistakes: 2 }), game({ mistakes: 3, outcome: GameOutcome.Abandoned }), game({ difficulty: Difficulty.Hard, mistakes: 1 }));
+    const summary = summarize(data, TODAY);
+    expect(summary).toMatchObject({ totalMistakes: 6, flawlessSolved: 1 });
+    expect(summary.levels.find((level) => level.difficulty === Difficulty.Easy)?.averageMistakes).toBe(1.7);
+    expect(summary.levels.find((level) => level.difficulty === Difficulty.Medium)?.averageMistakes).toBeNull();
   });
 
   it("counts solved games in a row, current and best", () => {

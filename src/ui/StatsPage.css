@@ -31,6 +31,11 @@
   box-shadow: var(--shadow-soft);
 }
 
+/* With two columns, a last tile on its own fills the row. */
+.stats-tile:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .stats-tile__value {
   font-family: var(--font-digits);
   font-size: clamp(1.6rem, 7cqi, 2.4rem);
@@ -134,21 +139,27 @@
   font-weight: 700;
 }
 
+/* A safety net on very narrow screens: the table scrolls inside its card, never the page. */
+.stats__table-scroll {
+  overflow-x: auto;
+}
+
 .stats__recent {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
 }
 
 .stats__recent th {
-  padding: 4px 6px;
+  padding: 4px;
   color: var(--muted);
   font-weight: 700;
   text-align: left;
 }
 
 .stats__recent td {
-  padding: 6px;
+  padding: 6px 4px;
+  white-space: nowrap;
   border-top: 1px solid var(--tile-edge);
 }
 
@@ -157,10 +168,24 @@
   font-variant-numeric: tabular-nums;
 }
 
+.stats__mistakes {
+  color: var(--conflict);
+  font-weight: 700;
+}
+
+.stats__outcome {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 /* Measured against the app's own width (it is a size container), not the window. */
-@container (min-width: 480px) {
+@container (min-width: 520px) {
   .stats__tiles {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .stats-tile:last-child:nth-child(odd) {
+    grid-column: auto;
   }
 }
 

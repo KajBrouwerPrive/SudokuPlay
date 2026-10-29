@@ -7,8 +7,12 @@ import { ScoreChart } from "./ScoreChart";
 import "./StatsPage.css";
 import { useCountUp } from "./useCountUp";
 
-const DATE_FORMAT = new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const DATE_FORMAT = new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short" });
 const NOTHING = "–";
+const OUTCOME_LABELS: Readonly<Record<GameOutcome, string>> = { [GameOutcome.Solved]: "Opgelost", [GameOutcome.Abandoned]: "Gestopt" };
+const OUTCOME_MARKS: Readonly<Record<GameOutcome, string>> = { [GameOutcome.Solved]: "✓", [GameOutcome.Abandoned]: "✕" };
+const MISTAKES_FORMAT = new Intl.NumberFormat("nl-NL", { maximumFractionDigits: 1 });
+const formatMistakes = (value: number) => MISTAKES_FORMAT.format(value);
 
 interface StatsPageProps {
   stats: StatsData;
@@ -47,6 +51,7 @@ export function StatsPage({ stats, difficultyLabels, reducedMotion, onBack }: St
           <section className="stats__tiles" aria-label="Totaal">
             <Tile label="punten totaal" value={summary.totalPoints} reducedMotion={reducedMotion} />
             <Tile label={`opgelost van ${summary.gamesPlayed}`} value={summary.gamesSolved} reducedMotion={reducedMotion} />
+            <Tile label={`foutloos opgelost (${formatMistakes(summary.totalMistakes)} fouten totaal)`} value={summary.flawlessSolved} reducedMotion={reducedMotion} />
             <Tile label={summary.dayStreak === 1 ? "dag op rij" : "dagen op rij"} value={summary.dayStreak} reducedMotion={reducedMotion} />
             <Tile label={`op rij opgelost (record ${summary.bestSolvedStreak})`} value={summary.solvedStreak} reducedMotion={reducedMotion} />
           </section>
@@ -68,6 +73,8 @@ export function StatsPage({ stats, difficultyLabels, reducedMotion, onBack }: St
                     <dd>{orNothing(level.bestTimeMs, formatDuration)}</dd>
                     <dt>Gemiddeld</dt>
                     <dd>{orNothing(level.averageTimeMs, formatDuration)}</dd>
+                    <dt>Gem. fouten</dt>
+                    <dd>{orNothing(level.averageMistakes, formatMistakes)}</dd>
                   </dl>
                 </article>
               ))}
@@ -83,28 +90,37 @@ export function StatsPage({ stats, difficultyLabels, reducedMotion, onBack }: St
 
           <section className="stats__section">
             <h2>Laatste spellen</h2>
-            <table className="stats__recent">
-              <thead>
-                <tr>
-                  <th scope="col">Wanneer</th>
-                  <th scope="col">Niveau</th>
-                  <th scope="col">Punten</th>
-                  <th scope="col">Tijd</th>
-                  <th scope="col">Uitkomst</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.recent.map((game) => (
-                  <tr key={game.finishedAt + game.seed}>
-                    <td>{DATE_FORMAT.format(new Date(game.finishedAt))}</td>
-                    <td>{difficultyLabels[game.difficulty]}</td>
-                    <td className="stats__number">{formatPoints(game.points)}</td>
-                    <td className="stats__number">{formatDuration(game.durationMs)}</td>
-                    <td>{game.outcome === GameOutcome.Solved ? "✓ Opgelost" : "Gestopt"}</td>
+            <div className="stats__table-scroll">
+              <table className="stats__recent">
+                <thead>
+                  <tr>
+                    <th scope="col">Wanneer</th>
+                    <th scope="col">Niveau</th>
+                    <th scope="col">Punten</th>
+                    <th scope="col">Fouten</th>
+                    <th scope="col">Tijd</th>
+                    <th scope="col">
+                      <span className="visually-hidden">Uitkomst</span>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {summary.recent.map((game) => (
+                    <tr key={game.finishedAt + game.seed}>
+                      <td>{DATE_FORMAT.format(new Date(game.finishedAt))}</td>
+                      <td>{difficultyLabels[game.difficulty]}</td>
+                      <td className="stats__number">{formatPoints(game.points)}</td>
+                      <td className={game.mistakes > 0 ? "stats__number stats__mistakes" : "stats__number"}>{game.mistakes}</td>
+                      <td className="stats__number">{formatDuration(game.durationMs)}</td>
+                      <td className="stats__outcome" title={OUTCOME_LABELS[game.outcome]}>
+                        <span aria-hidden="true">{OUTCOME_MARKS[game.outcome]}</span>
+                        <span className="visually-hidden">{OUTCOME_LABELS[game.outcome]}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
         </>
       )}
