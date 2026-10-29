@@ -8,11 +8,14 @@ import {
   DIGIT_BONUS,
   FLAWLESS_BONUS,
   MAX_MULTIPLIER,
+  MAX_MISTAKE_PENALTY,
   MAX_SPEED_BONUS,
+  MISTAKE_PENALTY_STEP,
   SOLVE_BONUS,
   TARGET_TIME_MS,
   UNIT_BONUS,
   createScore,
+  mistakePenalty,
   multiplierFor,
   scoreEvents,
   speedBonus,
@@ -55,12 +58,30 @@ describe("scoring", () => {
     expect(again.score.combo).toBe(1);
   });
 
-  it("takes the base for a mistake, never below zero, and resets the combo", () => {
+  it("makes every mistake cost more, up to a maximum, and resets the combo", () => {
     const before = run(createScore(), [correct(0)], [correct(1)]);
     const { score, awards } = scoreEvents(before, wrong(2), CONTEXT);
-    expect(awards).toEqual([{ reason: AwardReason.Mistake, points: -BASE, cell: 2 }]);
-    expect(score.combo).toBe(0);
-    expect(scoreEvents(createScore(), wrong(2), CONTEXT).score.points).toBe(0);
+    expect(awards).toEqual([{ reason: AwardReason.Mistake, points: -MISTAKE_PENALTY_STEP * BASE, cell: 2 }]);
+    expect(score).toMatchObject({ combo: 0, mistakes: 1 });
+    expect(scoreEvents(score, wrong(3), CONTEXT).awards[0].points).toBe(-2 * MISTAKE_PENALTY_STEP * BASE);
+    expect(mistakePenalty(10, Difficulty.Medium)).toBe(MAX_MISTAKE_PENALTY * BASE);
+  });
+
+  it("lets an early mistake push the points below zero, so it is never free", () => {
+    expect(scoreEvents(createScore(), wrong(2), CONTEXT).score.points).toBe(-MISTAKE_PENALTY_STEP * BASE);
+  });
+
+  it("weighs one mistake heavier than the whole speed bonus", () => {
+    const lostByMistake = mistakePenalty(1, Difficulty.Medium) + FLAWLESS_BONUS * BASE;
+    expect(lostByMistake).toBeGreaterThan(MAX_SPEED_BONUS * BASE);
+    expect(mistakePenalty(1, Difficulty.Medium)).toBeGreaterThanOrEqual((MAX_SPEED_BONUS * BASE) / 2);
+  });
+
+  it("does not halve a score that is zero or below", () => {
+    const negative = { ...createScore(), points: -80 };
+    const { score, awards } = scoreEvents(negative, [{ type: GameEventType.HintUsed, cell: 5, digit: 3, hints: 1 }], CONTEXT);
+    expect(awards).toEqual([]);
+    expect(score).toMatchObject({ points: -80, hints: 1 });
   });
 
   it("halves the points on a hint, and the hinted digit earns nothing", () => {

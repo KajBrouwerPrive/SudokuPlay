@@ -143,6 +143,14 @@ describe("sessionReducer", () => {
     });
   });
 
+  describe("negative scores", () => {
+    it("lets a mistake push the score below zero, but records zero", () => {
+      const session = command(select(createSession(PUZZLE), 2), { type: CommandType.Input, digit: 5, asNote: false });
+      expect(session.score.points).toBeLessThan(0);
+      expect(toGameRecord(session, GameOutcome.Abandoned, new Date()).points).toBe(0);
+    });
+  });
+
   describe("score, time and hints", () => {
     it("scores a correct digit and reports the award with the batch", () => {
       const session = command(select(createSession(PUZZLE), 2), { type: CommandType.Input, digit: 4, asNote: false });

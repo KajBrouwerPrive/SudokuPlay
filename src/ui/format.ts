@@ -21,8 +21,9 @@ export function formatMultiplier(multiplier: number): string {
 }
 
 const POINTS_FORMAT = new Intl.NumberFormat("nl-NL");
+const MINUS_SIGN = "−";
 
-/** Points with Dutch thousands separators: "12.345". */
+/** Points with Dutch thousands separators ("12.345") and a real minus sign below zero ("−150"). */
 export function formatPoints(points: number): string {
-  return POINTS_FORMAT.format(points);
+  return points < 0 ? `${MINUS_SIGN}${POINTS_FORMAT.format(-points)}` : POINTS_FORMAT.format(points);
 }

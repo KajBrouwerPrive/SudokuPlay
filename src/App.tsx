@@ -164,7 +164,7 @@ export function App() {
             </select>
           </label>
           <p className="status" role="status">
-            <span className="status__chip status__chip--score">
+            <span className={score.points < 0 ? "status__chip status__chip--score status__chip--alert" : "status__chip status__chip--score"}>
               <span className="status__points" data-control={Control.Score}>
                 {formatPoints(score.points)}
               </span>{" "}

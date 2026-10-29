@@ -178,7 +178,8 @@ export function toGameRecord(session: Session, outcome: GameOutcome, finishedAt:
     finishedAt: finishedAt.toISOString(),
     difficulty: game.difficulty,
     seed: game.seed,
-    points: score.points,
+    // A game can end below zero after many mistakes; the record starts at zero.
+    points: Math.max(0, score.points),
     mistakes: game.mistakes,
     hints: game.hints,
     durationMs: Math.round(elapsedMs),

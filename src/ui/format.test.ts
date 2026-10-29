@@ -16,5 +16,6 @@ describe("format", () => {
 
   it("groups thousands the Dutch way", () => {
     expect(formatPoints(12345)).toBe("12.345");
+    expect(formatPoints(-1500)).toBe("−1.500");
   });
 });

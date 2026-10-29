@@ -128,7 +128,8 @@ button:disabled {
 
 /* Mistakes made: the chip turns red, so the count is hard to miss. */
 .status__chip--alert,
-.status__chip--alert .status__mistakes {
+.status__chip--alert .status__mistakes,
+.status__chip--alert .status__points {
   color: var(--conflict);
   background: var(--conflict-bg);
 }
