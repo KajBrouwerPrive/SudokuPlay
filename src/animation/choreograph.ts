@@ -120,7 +120,11 @@ function cuesFor(event: GameEvent, { placedCell, wavedCells }: BatchContext): Cu
         { effect: Effect.ConflictPulse, target: cellTarget(cell), delayMs: LANDING_DELAY_MS },
       ]);
     case GameEventType.MistakeMade:
-      return [{ effect: Effect.CounterShake, target: controlTarget(Control.Mistakes), delayMs: LANDING_DELAY_MS }];
+      return [
+        { effect: Effect.CounterShake, target: controlTarget(Control.Mistakes), delayMs: LANDING_DELAY_MS },
+        { effect: Effect.MistakeFlash, target: cellTarget(event.cell), delayMs: LANDING_DELAY_MS },
+        { effect: Effect.BoardShake, target: { kind: TargetKind.Board }, delayMs: LANDING_DELAY_MS },
+      ];
     case GameEventType.NoteToggled:
       return event.added
         ? [{ effect: Effect.NotePopIn, target: { kind: TargetKind.Note, cell: event.cell, digit: event.digit }, delayMs: 0 }]

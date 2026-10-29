@@ -48,6 +48,6 @@ describe("resolveTokens", () => {
         [...keyframes, ...(reducedKeyframes ?? [])].flatMap((frame) => [...JSON.stringify(frame).matchAll(/var\((--[\w-]+)\)/g)].map(([, token]) => token)),
       ),
     );
-    expect([...used].sort()).toEqual(["--fx-conflict", "--fx-sweep", "--fx-wave"]);
+    expect([...used].sort()).toEqual(["--fx-conflict", "--fx-mistake", "--fx-sweep", "--fx-wave"]);
   });
 });

@@ -171,7 +171,7 @@ export function App() {
               punten
               {multiplier > 1 && <span className="status__combo">{formatMultiplier(multiplier)}</span>}
             </span>
-            <span className="status__chip">
+            <span className={game.mistakes > 0 ? "status__chip status__chip--alert" : "status__chip"}>
               Fouten{" "}
               <span className="status__mistakes" data-control={Control.Mistakes}>
                 {game.mistakes}

@@ -75,7 +75,7 @@ describe("cellViews", () => {
 
   it("marks givens and nothing else without a selection", () => {
     const views = cellViews(game, null);
-    expect(views[0]).toEqual({ value: 5, notes: [], given: true, hinted: false, selected: false, peer: false, sameDigit: false, highlightedNote: null, conflict: false });
+    expect(views[0]).toEqual({ value: 5, notes: [], given: true, hinted: false, selected: false, peer: false, sameDigit: false, highlightedNote: null, conflict: false, wrong: false });
     expect(views[2]).toMatchObject({ value: null, given: false });
   });
 
@@ -106,13 +106,20 @@ describe("cellViews", () => {
     expect(cellViews(state, 1)[2].highlightedNote).toBe(3);
   });
 
+  it("marks a wrong digit even when nothing clashes with it", () => {
+    // Cell 2 must hold 4; a 2 clashes with nothing in row 0, column 2 or box 0 of the classic puzzle.
+    const state = applyAction(game, { type: ActionType.Place, cell: 2, digit: 2 }).state;
+    expect(cellViews(state, null)[2]).toMatchObject({ conflict: false, wrong: true });
+    expect(cellViews(applyAction(game, { type: ActionType.Place, cell: 2, digit: 4 }).state, null)[2].wrong).toBe(false);
+  });
+
   it("shows notes in empty cells and marks conflicts", () => {
     let state = applyAction(game, { type: ActionType.ToggleNote, cell: 2, digit: 4 }).state;
     state = applyAction(state, { type: ActionType.ToggleNote, cell: 2, digit: 1 }).state;
     expect(cellViews(state, null)[2].notes).toEqual([1, 4]);
     state = applyAction(state, { type: ActionType.Place, cell: 2, digit: 5 }).state;
     const views = cellViews(state, null);
-    expect(views[2]).toMatchObject({ value: 5, notes: [], conflict: true });
+    expect(views[2]).toMatchObject({ value: 5, notes: [], conflict: true, wrong: true });
     expect(views[0].conflict).toBe(true);
   });
 });

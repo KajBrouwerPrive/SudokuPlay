@@ -23,6 +23,7 @@ const TEXT_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ["--entered", "--peer"],
   ["--entered", "--same-digit"],
   ["--conflict", "--conflict-bg"],
+  ["--conflict", "--surface"],
   ["--accent-contrast", "--accent"],
   ["--text", "--key"],
   ["--muted", "--key"],

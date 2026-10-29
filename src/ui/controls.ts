@@ -147,6 +147,8 @@ export interface CellView {
   /** That same digit when this empty cell has it as a note, so the note can light up. */
   highlightedNote: Digit | null;
   conflict: boolean;
+  /** Holds a digit that differs from the solution, clash or not. */
+  wrong: boolean;
 }
 
 export function cellViews(state: GameState, selected: number | null, armedDigit: Digit | null = null): CellView[] {
@@ -166,6 +168,7 @@ export function cellViews(state: GameState, selected: number | null, armedDigit:
       sameDigit: highlightedDigit !== EMPTY && value === highlightedDigit,
       highlightedNote: notes.find((note) => note === highlightedDigit) ?? null,
       conflict: conflicts.has(cell),
+      wrong: value !== EMPTY && state.givens[cell] === EMPTY && value !== state.solution[cell],
     };
   });
 }

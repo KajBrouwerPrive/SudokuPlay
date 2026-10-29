@@ -126,6 +126,13 @@ button:disabled {
   box-shadow: var(--shadow-soft);
 }
 
+/* Mistakes made: the chip turns red, so the count is hard to miss. */
+.status__chip--alert,
+.status__chip--alert .status__mistakes {
+  color: var(--conflict);
+  background: var(--conflict-bg);
+}
+
 .status__points {
   display: inline-block;
   font-family: var(--font-digits);

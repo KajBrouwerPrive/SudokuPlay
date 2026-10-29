@@ -32,7 +32,7 @@ describe("choreograph", () => {
     ]);
   });
 
-  it("gives a wrong digit a limp plop, then wobbles every clashing cell and shakes the counter after landing", () => {
+  it("gives a wrong digit a limp plop, then wobbles every clashing cell, shakes the counter, flashes the cell and shakes the board", () => {
     const cues = choreograph([
       { type: GameEventType.CellPlaced, cell: 2, digit: 5, correct: false },
       { type: GameEventType.ConflictDetected, cell: 2, digit: 5, conflictingCells: [0] },
@@ -45,6 +45,8 @@ describe("choreograph", () => {
       [Effect.Wobble, { kind: TargetKind.Cell, cell: 0 }, LANDING_DELAY_MS],
       [Effect.ConflictPulse, { kind: TargetKind.Cell, cell: 0 }, LANDING_DELAY_MS],
       [Effect.CounterShake, { kind: TargetKind.Control, control: Control.Mistakes }, LANDING_DELAY_MS],
+      [Effect.MistakeFlash, { kind: TargetKind.Cell, cell: 2 }, LANDING_DELAY_MS],
+      [Effect.BoardShake, { kind: TargetKind.Board }, LANDING_DELAY_MS],
     ]);
   });
 
