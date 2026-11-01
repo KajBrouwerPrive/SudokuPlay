@@ -37,6 +37,7 @@
   --fx-conflict: rgba(229, 57, 83, 0.35);
   --fx-sweep: rgba(120, 104, 255, 0.28);
   --fx-wave: rgba(255, 201, 60, 0.5);
+  --fx-mistake: rgba(214, 40, 70, 0.55);
 
   /* Shape */
   --radius-board: 22px;
@@ -99,6 +100,7 @@
     --fx-conflict: rgba(255, 110, 130, 0.35);
     --fx-sweep: rgba(180, 168, 255, 0.3);
     --fx-wave: rgba(255, 210, 94, 0.4);
+    --fx-mistake: rgba(255, 90, 115, 0.5);
 
     --shadow-soft: 0 12px 32px rgba(0, 0, 0, 0.35);
     --shadow-card: 0 18px 48px rgba(0, 0, 0, 0.5);

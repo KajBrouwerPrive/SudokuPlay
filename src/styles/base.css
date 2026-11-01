@@ -82,6 +82,17 @@ button:disabled {
   cursor: default;
 }
 
+/* The game stays mounted while the stats page shows; `hidden` must beat the flex layout. */
+.app[hidden] {
+  display: none;
+}
+
+.button--icon {
+  display: grid;
+  place-items: center;
+  padding: 7px 10px;
+}
+
 .button--primary {
   color: var(--accent-contrast);
   background: var(--accent);
@@ -113,6 +124,35 @@ button:disabled {
   border-radius: var(--radius-pill);
   background: var(--surface);
   box-shadow: var(--shadow-soft);
+}
+
+/* Mistakes made: the chip turns red, so the count is hard to miss. */
+.status__chip--alert,
+.status__chip--alert .status__mistakes,
+.status__chip--alert .status__points {
+  color: var(--conflict);
+  background: var(--conflict-bg);
+}
+
+.status__points {
+  display: inline-block;
+  font-family: var(--font-digits);
+  font-weight: 650;
+  color: var(--accent);
+}
+
+.status__combo {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--gold);
+  color: var(--text);
+  font-size: 0.85em;
+}
+
+.status__time {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
 }
 
 .status__mistakes {

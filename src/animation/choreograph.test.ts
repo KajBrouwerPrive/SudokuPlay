@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ActionType, BOXES, COLUMNS, GameEventType, RejectReason, ROWS, type GameEvent } from "../engine";
+import { ActionType, AwardReason, BOXES, COLUMNS, GameEventType, RejectReason, ROWS, type GameEvent } from "../engine";
 import {
   CARD_DELAY_MS,
   Control,
@@ -10,9 +10,13 @@ import {
   LANDING_DELAY_MS,
   NOTE_STAGGER_MS,
   TargetKind,
+  AWARD_STAGGER_MS,
+  HINT_SPARKLE_LEAD_MS,
   WAVE_STAGGER_MS,
   choreograph,
+  choreographAwards,
   distance,
+  pointsLabel,
 } from "./choreograph";
 import { Effect } from "./effects";
 
@@ -28,7 +32,7 @@ describe("choreograph", () => {
     ]);
   });
 
-  it("gives a wrong digit a limp plop, then wobbles every clashing cell and shakes the counter after landing", () => {
+  it("gives a wrong digit a limp plop, then wobbles every clashing cell, shakes the counter, flashes the cell and shakes the board", () => {
     const cues = choreograph([
       { type: GameEventType.CellPlaced, cell: 2, digit: 5, correct: false },
       { type: GameEventType.ConflictDetected, cell: 2, digit: 5, conflictingCells: [0] },
@@ -41,6 +45,8 @@ describe("choreograph", () => {
       [Effect.Wobble, { kind: TargetKind.Cell, cell: 0 }, LANDING_DELAY_MS],
       [Effect.ConflictPulse, { kind: TargetKind.Cell, cell: 0 }, LANDING_DELAY_MS],
       [Effect.CounterShake, { kind: TargetKind.Control, control: Control.Mistakes }, LANDING_DELAY_MS],
+      [Effect.MistakeFlash, { kind: TargetKind.Cell, cell: 2 }, LANDING_DELAY_MS],
+      [Effect.BoardShake, { kind: TargetKind.Board }, LANDING_DELAY_MS],
     ]);
   });
 
@@ -140,6 +146,39 @@ describe("choreograph", () => {
     expect(DANCE_DELAY_MS).toBeGreaterThan(LANDING_DELAY_MS);
     expect(FINALE_DELAY_MS).toBeGreaterThan(DANCE_DELAY_MS + DANCE_STAGGER_MS * 9);
     expect(FINALE_DELAY_MS).toBeGreaterThan(longestWave);
+  });
+
+  it("twinkles stars on a hinted cell", () => {
+    expect(choreograph([{ type: GameEventType.HintUsed, cell: 7, digit: 2, hints: 1 }])).toMatchObject([
+      { effect: Effect.HintSparkle, target: { kind: TargetKind.Cell, cell: 7 }, delayMs: 0 },
+    ]);
+  });
+
+  it("floats points up from their cell, bonuses above the counter in turn, and bumps the counter", () => {
+    const cues = choreographAwards([
+      { reason: AwardReason.Digit, points: 15, cell: 4 },
+      { reason: AwardReason.Unit, points: 30, cell: null },
+      { reason: AwardReason.DigitCompleted, points: 45, cell: null },
+    ]);
+    expect(cues.map((cue) => [cue.effect, cue.target, cue.delayMs, cue.label])).toEqual([
+      [Effect.ScorePop, { kind: TargetKind.Cell, cell: 4 }, LANDING_DELAY_MS, "+15"],
+      [Effect.ScorePop, { kind: TargetKind.Control, control: Control.Score }, LANDING_DELAY_MS, "+30"],
+      [Effect.ScorePop, { kind: TargetKind.Control, control: Control.Score }, LANDING_DELAY_MS + AWARD_STAGGER_MS, "+45"],
+      [Effect.ScoreBump, { kind: TargetKind.Control, control: Control.Score }, LANDING_DELAY_MS, undefined],
+    ]);
+  });
+
+  it("shows a halving instead of a number for a hint, and squashes the counter", () => {
+    const cues = choreographAwards([{ reason: AwardReason.Hint, points: -40, cell: 3 }]);
+    expect(cues.map((cue) => [cue.effect, cue.label ?? null, cue.delayMs])).toEqual([
+      [Effect.ScorePop, "÷2", LANDING_DELAY_MS],
+      [Effect.ScoreHalve, null, HINT_SPARKLE_LEAD_MS],
+    ]);
+  });
+
+  it("writes losses with a real minus sign", () => {
+    expect(pointsLabel(15)).toBe("+15");
+    expect(pointsLabel(-15)).toBe("−15");
   });
 
   it("measures distance in king steps", () => {

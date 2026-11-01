@@ -1,6 +1,6 @@
 import { Control } from "../animation/choreograph";
 import { DIGITS, type Digit } from "../engine";
-import { EraserIcon, PencilIcon, RedoIcon, UndoIcon } from "./Icons";
+import { BulbIcon, EraserIcon, PencilIcon, RedoIcon, UndoIcon } from "./Icons";
 import "./NumberPad.css";
 
 /** Shown instead of the remaining count once all nine copies are placed. */
@@ -16,9 +16,12 @@ interface NumberPadProps {
   onUndo: () => void;
   onRedo: () => void;
   onToggleNotes: () => void;
+  /** True while the hint key waits for a second press to confirm. */
+  hintConfirming: boolean;
+  onHint: () => void;
 }
 
-export function NumberPad({ remaining, notesMode, armedDigit, onDigit, onErase, onUndo, onRedo, onToggleNotes }: NumberPadProps) {
+export function NumberPad({ remaining, notesMode, armedDigit, onDigit, onErase, onUndo, onRedo, onToggleNotes, hintConfirming, onHint }: NumberPadProps) {
   return (
     <div className={notesMode ? "pad pad--notes" : "pad"}>
       <div className="pad__tools">
@@ -38,6 +41,15 @@ export function NumberPad({ remaining, notesMode, armedDigit, onDigit, onErase, 
           <PencilIcon />
           <span>Notities</span>
           <span className="pad__switch" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className={hintConfirming ? "pad__tool pad__tool--hint pad__tool--confirming" : "pad__tool pad__tool--hint"}
+          aria-live="polite"
+          onClick={onHint}
+        >
+          <BulbIcon />
+          <span>{hintConfirming ? "Zeker? ÷2" : "Hint"}</span>
         </button>
       </div>
       <div className="pad__digits">

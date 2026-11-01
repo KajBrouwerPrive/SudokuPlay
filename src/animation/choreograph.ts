@@ -1,6 +1,6 @@
 // The director: turns one transition's engine events into timed animation cues. Pure, so timing
 // and order are unit-tested; the cue player only executes what this returns.
-import { CELL_COUNT, GRID_SIZE, GameEventType, RejectReason, columnOf, rowOf, type Digit, type GameEvent } from "../engine";
+import { AwardReason, CELL_COUNT, GRID_SIZE, GameEventType, RejectReason, columnOf, rowOf, type Award, type Digit, type GameEvent } from "../engine";
 import { Effect } from "./effects";
 
 export const Control = {
@@ -8,6 +8,7 @@ export const Control = {
   Undo: "undo",
   Redo: "redo",
   SolvedCard: "solvedCard",
+  Score: "score",
 } as const;
 export type Control = (typeof Control)[keyof typeof Control];
 
@@ -50,6 +51,10 @@ export const FLIP_STAGGER_MS = 35;
 /** The last diagonal starts flipping after this, which is when confetti and the card follow. */
 export const FINALE_CASCADE_MS = FINALE_DELAY_MS + 2 * (GRID_SIZE - 1) * FLIP_STAGGER_MS;
 export const CARD_DELAY_MS = FINALE_CASCADE_MS + 200;
+/** Bonuses without a cell rise above the score counter one after another. */
+export const AWARD_STAGGER_MS = 220;
+/** A hint's digit lands while its stars twinkle. */
+export const HINT_SPARKLE_LEAD_MS = 120;
 
 const cellTarget = (cell: number): CueTarget => ({ kind: TargetKind.Cell, cell });
 const controlTarget = (control: Control): CueTarget => ({ kind: TargetKind.Control, control });
@@ -57,6 +62,32 @@ const controlTarget = (control: Control): CueTarget => ({ kind: TargetKind.Contr
 /** Steps between two cells when moving like a king; peers in the same box are 1 or 2 apart. */
 export function distance(from: number, to: number): number {
   return Math.max(Math.abs(rowOf(from) - rowOf(to)), Math.abs(columnOf(from) - columnOf(to)));
+}
+
+const HINT_SPARKLE_LABEL = "✦";
+const MINUS_SIGN = "−";
+const HALVED_LABEL = "÷2";
+
+/** "+15" or "−15", with a real minus sign. */
+export function pointsLabel(points: number): string {
+  return points >= 0 ? `+${points}` : `${MINUS_SIGN}${-points}`;
+}
+
+/**
+ * Score cues: each award tied to a cell floats up from it once the digit has landed; bonuses rise
+ * above the counter one after another. The counter bumps for gains and squashes for a hint.
+ */
+export function choreographAwards(awards: readonly Award[]): Cue[] {
+  const scoreTarget = controlTarget(Control.Score);
+  let bonusIndex = 0;
+  const cues = awards.map((award): Cue => {
+    const label = award.reason === AwardReason.Hint ? HALVED_LABEL : pointsLabel(award.points);
+    if (award.cell !== null) return { effect: Effect.ScorePop, target: cellTarget(award.cell), delayMs: LANDING_DELAY_MS, label };
+    return { effect: Effect.ScorePop, target: scoreTarget, delayMs: LANDING_DELAY_MS + AWARD_STAGGER_MS * bonusIndex++, label };
+  });
+  if (awards.some((award) => award.reason === AwardReason.Hint)) cues.push({ effect: Effect.ScoreHalve, target: scoreTarget, delayMs: HINT_SPARKLE_LEAD_MS });
+  else if (awards.some((award) => award.points > 0)) cues.push({ effect: Effect.ScoreBump, target: scoreTarget, delayMs: LANDING_DELAY_MS });
+  return cues;
 }
 
 /** What earlier events in the same batch tell later ones. */
@@ -89,7 +120,11 @@ function cuesFor(event: GameEvent, { placedCell, wavedCells }: BatchContext): Cu
         { effect: Effect.ConflictPulse, target: cellTarget(cell), delayMs: LANDING_DELAY_MS },
       ]);
     case GameEventType.MistakeMade:
-      return [{ effect: Effect.CounterShake, target: controlTarget(Control.Mistakes), delayMs: LANDING_DELAY_MS }];
+      return [
+        { effect: Effect.CounterShake, target: controlTarget(Control.Mistakes), delayMs: LANDING_DELAY_MS },
+        { effect: Effect.MistakeFlash, target: cellTarget(event.cell), delayMs: LANDING_DELAY_MS },
+        { effect: Effect.BoardShake, target: { kind: TargetKind.Board }, delayMs: LANDING_DELAY_MS },
+      ];
     case GameEventType.NoteToggled:
       return event.added
         ? [{ effect: Effect.NotePopIn, target: { kind: TargetKind.Note, cell: event.cell, digit: event.digit }, delayMs: 0 }]
@@ -105,6 +140,7 @@ function cuesFor(event: GameEvent, { placedCell, wavedCells }: BatchContext): Cu
     case GameEventType.MoveRejected:
       switch (event.reason) {
         case RejectReason.GivenCell:
+        case RejectReason.HintedCell:
         case RejectReason.CellFilled:
           return event.cell === null ? [] : [{ effect: Effect.Bonk, target: cellTarget(event.cell), delayMs: 0 }];
         case RejectReason.NothingToUndo:
@@ -129,6 +165,8 @@ function cuesFor(event: GameEvent, { placedCell, wavedCells }: BatchContext): Cu
         ...event.cells.map((cell, turn) => ({ effect: Effect.DigitDance, target: cellTarget(cell), delayMs: DANCE_DELAY_MS + DANCE_STAGGER_MS * turn })),
         { effect: Effect.PadComplete, target: { kind: TargetKind.Pad, digit: event.digit }, delayMs: DANCE_DELAY_MS + DANCE_STAGGER_MS * event.cells.length },
       ];
+    case GameEventType.HintUsed:
+      return [{ effect: Effect.HintSparkle, target: cellTarget(event.cell), delayMs: 0, label: HINT_SPARKLE_LABEL }];
     case GameEventType.PuzzleSolved:
       return [
         ...Array.from({ length: CELL_COUNT }, (_, cell) => ({
@@ -142,10 +180,10 @@ function cuesFor(event: GameEvent, { placedCell, wavedCells }: BatchContext): Cu
   }
 }
 
-export function choreograph(events: readonly GameEvent[]): Cue[] {
+export function choreograph(events: readonly GameEvent[], awards: readonly Award[] = []): Cue[] {
   const context: BatchContext = { placedCell: null, wavedCells: new Set() };
   return events.flatMap((event) => {
     if (event.type === GameEventType.CellPlaced) context.placedCell = event.cell;
     return cuesFor(event, context);
-  });
+  }).concat(choreographAwards(awards));
 }

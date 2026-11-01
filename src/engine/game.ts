@@ -2,10 +2,11 @@
 // domain events the move caused. The UI renders state and animates events; it never decides rules.
 //
 // Event order within one transition is fixed, so animations can be choreographed from it:
-//   CellPlaced → NotesCleared → ConflictDetected → MistakeMade → UnitCompleted* → DigitCompleted → PuzzleSolved
+//   [HintUsed →] CellPlaced → NotesCleared → ConflictDetected → MistakeMade → UnitCompleted* → DigitCompleted → PuzzleSolved
 import { digitBit, hasCandidate } from "./candidates";
 import { CELL_COUNT, DIGITS, EMPTY, PEERS, UNITS_OF_CELL, cloneGrid, isDigit, type Digit, type Grid, type Unit } from "./grid";
 import type { Difficulty } from "./grader";
+import { findHintTarget } from "./hint";
 import type { Puzzle } from "./puzzleBank";
 import { conflictingPeers } from "./validator";
 
@@ -23,6 +24,8 @@ interface BoardSnapshot {
   values: Grid;
   /** Pencil marks per cell as candidate masks. */
   notes: Uint16Array;
+  /** 1 for cells a hint filled; they are locked like givens. Undoing the hint unlocks the cell. */
+  hinted: Uint8Array;
 }
 
 /** Treat as immutable: every transition returns new arrays instead of changing these. */
@@ -33,6 +36,8 @@ export interface GameState extends BoardSnapshot {
   difficulty: Difficulty;
   seed: number;
   mistakes: number;
+  /** Hints used; like mistakes, undo does not take them back. */
+  hints: number;
   status: GameStatus;
   undoStack: readonly BoardSnapshot[];
   redoStack: readonly BoardSnapshot[];
@@ -44,6 +49,8 @@ export const ActionType = {
   ToggleNote: "toggleNote",
   Undo: "undo",
   Redo: "redo",
+  /** Fills one cell with its solution digit; see `findHintTarget` for which cell. */
+  Hint: "hint",
 } as const;
 
 export type GameAction =
@@ -51,7 +58,8 @@ export type GameAction =
   | { type: typeof ActionType.Erase; cell: number }
   | { type: typeof ActionType.ToggleNote; cell: number; digit: Digit }
   | { type: typeof ActionType.Undo }
-  | { type: typeof ActionType.Redo };
+  | { type: typeof ActionType.Redo }
+  | { type: typeof ActionType.Hint; preferredCell: number | null };
 
 export const GameEventType = {
   CellPlaced: "cellPlaced",
@@ -68,6 +76,8 @@ export const GameEventType = {
   /** All nine of a digit are placed correctly. */
   DigitCompleted: "digitCompleted",
   PuzzleSolved: "puzzleSolved",
+  /** A hint is about to fill `cell`; the CellPlaced and any celebrations follow. */
+  HintUsed: "hintUsed",
   MoveUndone: "moveUndone",
   MoveRedone: "moveRedone",
   MoveRejected: "moveRejected",
@@ -75,6 +85,8 @@ export const GameEventType = {
 
 export const RejectReason = {
   GivenCell: "givenCell",
+  /** A hint filled this cell; it is locked. */
+  HintedCell: "hintedCell",
   /** Notes only go in empty cells. */
   CellFilled: "cellFilled",
   GameOver: "gameOver",
@@ -94,6 +106,7 @@ export type GameEvent =
   /** `cells` holds all nine cells with this digit, in reading order. */
   | { type: typeof GameEventType.DigitCompleted; digit: Digit; cells: number[] }
   | { type: typeof GameEventType.PuzzleSolved; mistakes: number }
+  | { type: typeof GameEventType.HintUsed; cell: number; digit: Digit; hints: number }
   | { type: typeof GameEventType.MoveUndone; changedCells: number[] }
   | { type: typeof GameEventType.MoveRedone; changedCells: number[] }
   | { type: typeof GameEventType.MoveRejected; action: GameAction; reason: RejectReason; cell: number | null };
@@ -109,9 +122,11 @@ export function createGame({ puzzle, solution, difficulty, seed }: Puzzle): Game
     solution: cloneGrid(solution),
     values: cloneGrid(puzzle),
     notes: new Uint16Array(CELL_COUNT),
+    hinted: new Uint8Array(CELL_COUNT),
     difficulty,
     seed,
     mistakes: 0,
+    hints: 0,
     status: GameStatus.Playing,
     undoStack: [],
     redoStack: [],
@@ -120,6 +135,17 @@ export function createGame({ puzzle, solution, difficulty, seed }: Puzzle): Game
 
 export function isGiven(state: GameState, cell: number): boolean {
   return state.givens[cell] !== EMPTY;
+}
+
+export function isHinted(state: GameState, cell: number): boolean {
+  return state.hinted[cell] === 1;
+}
+
+/** Givens and hinted cells cannot be changed; returns the reason, or null when the cell is free. */
+function lockReason(state: GameState, cell: number): RejectReason | null {
+  if (isGiven(state, cell)) return RejectReason.GivenCell;
+  if (isHinted(state, cell)) return RejectReason.HintedCell;
+  return null;
 }
 
 /** How many of each digit are still to be placed correctly, for a number pad that counts down. */
@@ -145,7 +171,7 @@ function reject(state: GameState, action: GameAction, reason: RejectReason, cell
 }
 
 function snapshot(state: GameState): BoardSnapshot {
-  return { values: state.values, notes: state.notes };
+  return { values: state.values, notes: state.notes, hinted: state.hinted };
 }
 
 /** A new move: remember the board for undo and forget anything that could be redone. */
@@ -168,9 +194,25 @@ function cellsWithDigit(grid: Grid, digit: Digit): number[] {
 
 function place(state: GameState, action: Extract<GameAction, { type: typeof ActionType.Place }>): GameTransition {
   const { cell, digit } = action;
-  if (isGiven(state, cell)) return reject(state, action, RejectReason.GivenCell, cell);
+  const locked = lockReason(state, cell);
+  if (locked) return reject(state, action, locked, cell);
   if (state.values[cell] === digit) return { state, events: [] };
+  return placeDigit(state, cell, digit, {});
+}
 
+function hint(state: GameState, action: Extract<GameAction, { type: typeof ActionType.Hint }>): GameTransition {
+  const target = findHintTarget(state.values, state.solution, action.preferredCell);
+  // Unreachable while playing (an unsolved board always has a cell left), but kept explicit.
+  if (!target) return reject(state, action, RejectReason.GameOver, action.preferredCell);
+  const hinted = new Uint8Array(state.hinted);
+  hinted[target.cell] = 1;
+  const hints = state.hints + 1;
+  const placed = placeDigit(state, target.cell, target.digit, { hinted, hints });
+  return { state: placed.state, events: [{ type: GameEventType.HintUsed, cell: target.cell, digit: target.digit, hints }, ...placed.events] };
+}
+
+/** Puts a digit in a cell and reports everything that follows from it; shared by moves and hints. */
+function placeDigit(state: GameState, cell: number, digit: Digit, changes: Partial<GameState>): GameTransition {
   const values = cloneGrid(state.values);
   const notes = new Uint16Array(state.notes);
   values[cell] = digit;
@@ -182,7 +224,8 @@ function place(state: GameState, action: Extract<GameAction, { type: typeof Acti
   const correct = digit === state.solution[cell];
   const mistakes = correct ? state.mistakes : state.mistakes + 1;
   const solved = values.every((value, index) => value === state.solution[index]);
-  const next = commit(state, { values, notes }, { mistakes, status: solved ? GameStatus.Solved : GameStatus.Playing });
+  const hinted = changes.hinted ?? state.hinted;
+  const next = commit(state, { values, notes, hinted }, { ...changes, mistakes, status: solved ? GameStatus.Solved : GameStatus.Playing });
 
   const events: GameEvent[] = [{ type: GameEventType.CellPlaced, cell, digit, correct }];
   if (clearedNotes.length > 0) events.push({ type: GameEventType.NotesCleared, digit, cells: clearedNotes });
@@ -202,7 +245,8 @@ function place(state: GameState, action: Extract<GameAction, { type: typeof Acti
 
 function erase(state: GameState, action: Extract<GameAction, { type: typeof ActionType.Erase }>): GameTransition {
   const { cell } = action;
-  if (isGiven(state, cell)) return reject(state, action, RejectReason.GivenCell, cell);
+  const locked = lockReason(state, cell);
+  if (locked) return reject(state, action, locked, cell);
   const value = state.values[cell];
   if (value === EMPTY && state.notes[cell] === 0) return { state, events: [] };
 
@@ -212,19 +256,20 @@ function erase(state: GameState, action: Extract<GameAction, { type: typeof Acti
   if (value !== EMPTY) values[cell] = EMPTY;
   else notes[cell] = 0;
   return {
-    state: commit(state, { values, notes }),
+    state: commit(state, { values, notes, hinted: state.hinted }),
     events: [{ type: GameEventType.CellErased, cell, digit: value === EMPTY ? null : (value as Digit) }],
   };
 }
 
 function toggleNote(state: GameState, action: Extract<GameAction, { type: typeof ActionType.ToggleNote }>): GameTransition {
   const { cell, digit } = action;
-  if (isGiven(state, cell)) return reject(state, action, RejectReason.GivenCell, cell);
+  const locked = lockReason(state, cell);
+  if (locked) return reject(state, action, locked, cell);
   if (state.values[cell] !== EMPTY) return reject(state, action, RejectReason.CellFilled, cell);
   const notes = new Uint16Array(state.notes);
   notes[cell] ^= digitBit(digit);
   return {
-    state: commit(state, { values: state.values, notes }),
+    state: commit(state, { values: state.values, notes, hinted: state.hinted }),
     events: [{ type: GameEventType.NoteToggled, cell, digit, added: hasCandidate(notes[cell], digit) }],
   };
 }
@@ -261,6 +306,7 @@ function redo(state: GameState, action: GameAction): GameTransition {
  */
 export function applyAction(state: GameState, action: GameAction): GameTransition {
   if ("cell" in action) assertCell(action.cell);
+  if ("preferredCell" in action && action.preferredCell !== null) assertCell(action.preferredCell);
   if ("digit" in action) assertDigit(action.digit);
   if (state.status === GameStatus.Solved) return reject(state, action, RejectReason.GameOver, "cell" in action ? action.cell : null);
   switch (action.type) {
@@ -274,5 +320,7 @@ export function applyAction(state: GameState, action: GameAction): GameTransitio
       return undo(state, action);
     case ActionType.Redo:
       return redo(state, action);
+    case ActionType.Hint:
+      return hint(state, action);
   }
 }

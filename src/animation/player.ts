@@ -12,6 +12,8 @@ const GHOST_CLASS: Readonly<Partial<Record<EffectPart, string>>> = {
   [EffectPart.GhostValue]: "fx-ghost fx-ghost--value",
   [EffectPart.GhostNote]: "fx-ghost fx-ghost--note",
   [EffectPart.GhostRing]: "fx-ring",
+  [EffectPart.GhostScore]: "fx-ghost fx-score",
+  [EffectPart.GhostSparkle]: "fx-ghost fx-sparkle",
 };
 const CONFETTI_CLASS = "fx-confetti";
 const SEED_RANGE = 2 ** 32;

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { CLASSIC_PUZZLE, CLASSIC_SOLUTION } from "../engine/__fixtures__/puzzles";
-import { Difficulty, EMPTY, GameEventType, parseGrid, type Digit, type Puzzle } from "../engine";
+import { AwardReason, BASE_POINTS, Difficulty, EMPTY, GameEventType, GameStatus, parseGrid, type Digit, type Puzzle } from "../engine";
 import { CommandType, Direction, type Command } from "./controls";
-import { EVENT_LOG_LIMIT, SessionActionType, createSession, sessionReducer, type Session } from "./session";
+import { GameOutcome } from "../stats/stats";
+import { EVENT_LOG_LIMIT, SessionActionType, createSession, isAbandonable, sessionReducer, toGameRecord, type Session } from "./session";
 
 const PUZZLE: Puzzle = { puzzle: parseGrid(CLASSIC_PUZZLE), solution: parseGrid(CLASSIC_SOLUTION), difficulty: Difficulty.Easy, seed: 7 };
 
@@ -34,7 +35,7 @@ describe("sessionReducer", () => {
       [2, GameEventType.ConflictDetected],
       [1, GameEventType.CellPlaced],
     ]);
-    expect(session.lastBatch).toEqual({ id: 1, events: session.log.map(({ event }) => event).reverse() });
+    expect(session.lastBatch).toMatchObject({ id: 1, events: session.log.map(({ event }) => event).reverse() });
     session = command(session, { type: CommandType.Undo });
     expect(session.game.values[2]).toBe(EMPTY);
     expect(session.log[0].event.type).toBe(GameEventType.MoveUndone);
@@ -115,6 +116,68 @@ describe("sessionReducer", () => {
 
     it("starts a new game with nothing armed", () => {
       expect(sessionReducer(arm(createSession(PUZZLE), 4), { type: SessionActionType.NewGame, puzzle: PUZZLE }).armedDigit).toBeNull();
+    });
+  });
+
+  describe("game records", () => {
+    it("counts a game as abandoned only after a move", () => {
+      const fresh = createSession(PUZZLE);
+      expect(isAbandonable(fresh)).toBe(false);
+      expect(isAbandonable(command(select(fresh, 2), { type: CommandType.Input, digit: 4, asNote: false }))).toBe(true);
+    });
+
+    it("records difficulty, points, time, mistakes and hints", () => {
+      let session = command(select(createSession(PUZZLE), 2), { type: CommandType.Input, digit: 4, asNote: false });
+      session = sessionReducer(session, { type: SessionActionType.Tick, elapsedMs: 61_000.4 });
+      const finishedAt = new Date(2026, 9, 28, 12, 0);
+      expect(toGameRecord(session, GameOutcome.Abandoned, finishedAt)).toEqual({
+        finishedAt: finishedAt.toISOString(),
+        difficulty: Difficulty.Easy,
+        seed: 7,
+        points: BASE_POINTS[Difficulty.Easy],
+        mistakes: 0,
+        hints: 0,
+        durationMs: 61_000,
+        outcome: GameOutcome.Abandoned,
+      });
+    });
+  });
+
+  describe("negative scores", () => {
+    it("lets a mistake push the score below zero, but records zero", () => {
+      const session = command(select(createSession(PUZZLE), 2), { type: CommandType.Input, digit: 5, asNote: false });
+      expect(session.score.points).toBeLessThan(0);
+      expect(toGameRecord(session, GameOutcome.Abandoned, new Date()).points).toBe(0);
+    });
+  });
+
+  describe("score, time and hints", () => {
+    it("scores a correct digit and reports the award with the batch", () => {
+      const session = command(select(createSession(PUZZLE), 2), { type: CommandType.Input, digit: 4, asNote: false });
+      expect(session.score.points).toBe(BASE_POINTS[Difficulty.Easy]);
+      expect(session.lastBatch?.awards).toEqual([{ reason: AwardReason.Digit, points: BASE_POINTS[Difficulty.Easy], cell: 2 }]);
+    });
+
+    it("counts play time only while playing", () => {
+      let session = sessionReducer(createSession(PUZZLE), { type: SessionActionType.Tick, elapsedMs: 1500 });
+      expect(session.elapsedMs).toBe(1500);
+      session = { ...session, game: { ...session.game, status: GameStatus.Solved } };
+      expect(sessionReducer(session, { type: SessionActionType.Tick, elapsedMs: 1000 }).elapsedMs).toBe(1500);
+    });
+
+    it("gives a hint in the selected cell and halves the points", () => {
+      let session = command(select(createSession(PUZZLE), 2), { type: CommandType.Input, digit: 4, asNote: false });
+      session = command(select(session, 3), { type: CommandType.Hint });
+      expect(session.game.values[3]).toBe(PUZZLE.solution[3]);
+      expect(session.score.points).toBe(BASE_POINTS[Difficulty.Easy] / 2);
+      expect(session.lastBatch?.events[0].type).toBe(GameEventType.HintUsed);
+    });
+
+    it("moves the selection to the cell a hint filled", () => {
+      const session = command(select(createSession(PUZZLE), 0), { type: CommandType.Hint });
+      const used = session.lastBatch?.events.find((event) => event.type === GameEventType.HintUsed);
+      expect(used && "cell" in used ? used.cell : null).toBe(session.selected);
+      expect(session.selected).not.toBe(0);
     });
   });
 });

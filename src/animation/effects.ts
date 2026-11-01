@@ -46,6 +46,18 @@ export const Effect = {
   Confetti: "confetti",
   /** The solved card springs in. */
   CardIn: "cardIn",
+  /** Points float up from where they were earned ("+15") or lost ("−15", "÷2"). */
+  ScorePop: "scorePop",
+  /** The score counter swells when points arrive. */
+  ScoreBump: "scoreBump",
+  /** The score counter squashes when a hint halves it. */
+  ScoreHalve: "scoreHalve",
+  /** Stars twinkle around a cell a hint filled. */
+  HintSparkle: "hintSparkle",
+  /** A wrong digit's cell flashes red twice, clash or not. */
+  MistakeFlash: "mistakeFlash",
+  /** The whole board shakes once for a mistake. */
+  BoardShake: "boardShake",
 } as const;
 export type Effect = (typeof Effect)[keyof typeof Effect];
 
@@ -62,6 +74,10 @@ export const EffectPart = {
   GhostValue: "ghostValue",
   GhostNote: "ghostNote",
   GhostRing: "ghostRing",
+  /** Floating score text. */
+  GhostScore: "ghostScore",
+  /** A burst of stars around a cell. */
+  GhostSparkle: "ghostSparkle",
   /** A full-screen canvas with particles; the keyframes only fade the canvas out. */
   Confetti: "confetti",
 } as const;
@@ -85,6 +101,7 @@ const CONFLICT_SHADOW = "inset 0 0 0 999px var(--fx-conflict)";
 const SWEEP_SHADOW = "inset 0 0 0 999px var(--fx-sweep)";
 const NO_SHADOW = "inset 0 0 0 999px rgba(0, 0, 0, 0)";
 const WAVE_SHADOW = "inset 0 0 0 999px var(--fx-wave)";
+const MISTAKE_SHADOW = "inset 0 0 0 999px var(--fx-mistake)";
 
 const fadeIn: Keyframe[] = [{ opacity: 0 }, { opacity: 1 }];
 const fadeOut: Keyframe[] = [{ opacity: 1 }, { opacity: 0 }];
@@ -301,6 +318,74 @@ export const EFFECTS: Readonly<Record<Effect, EffectSpec>> = {
       { transform: "translateY(0) scale(1)", opacity: 1 },
     ],
     reducedKeyframes: fadeIn,
+  },
+  [Effect.ScorePop]: {
+    part: EffectPart.GhostScore,
+    durationMs: 900,
+    easing: EASE_OUT,
+    keyframes: [
+      { transform: "translateY(0) scale(0.6)", opacity: 0 },
+      { transform: "translateY(-14px) scale(1.15)", opacity: 1, offset: 0.25 },
+      { transform: "translateY(-34px) scale(1)", opacity: 0 },
+    ],
+    reducedKeyframes: [{ opacity: 0 }, { opacity: 1, offset: 0.25 }, { opacity: 0 }],
+  },
+  [Effect.ScoreBump]: {
+    part: EffectPart.Control,
+    durationMs: 300,
+    easing: EASE_OUT,
+    keyframes: [{ transform: "scale(1)" }, { transform: "scale(1.25)", offset: 0.35 }, { transform: "scale(1)" }],
+    reducedKeyframes: blink,
+  },
+  [Effect.ScoreHalve]: {
+    part: EffectPart.Control,
+    durationMs: 520,
+    easing: EASE_IN_OUT,
+    keyframes: [
+      { transform: "scale(1)" },
+      { transform: "scale(1.3, 0.6)", offset: 0.3 },
+      { transform: "scale(0.85, 1.1)", offset: 0.6 },
+      { transform: "scale(1)" },
+    ],
+    reducedKeyframes: blink,
+  },
+  [Effect.HintSparkle]: {
+    part: EffectPart.GhostSparkle,
+    durationMs: 700,
+    easing: EASE_OUT,
+    keyframes: [
+      { transform: "scale(0.3) rotate(0deg)", opacity: 0 },
+      { transform: "scale(1.1) rotate(25deg)", opacity: 1, offset: 0.35 },
+      { transform: "scale(1.5) rotate(60deg)", opacity: 0 },
+    ],
+    reducedKeyframes: null,
+  },
+  [Effect.MistakeFlash]: {
+    part: EffectPart.Cell,
+    durationMs: 700,
+    easing: EASE_IN_OUT,
+    keyframes: [
+      { boxShadow: NO_SHADOW },
+      { boxShadow: MISTAKE_SHADOW, offset: 0.2 },
+      { boxShadow: NO_SHADOW, offset: 0.45 },
+      { boxShadow: MISTAKE_SHADOW, offset: 0.65 },
+      { boxShadow: NO_SHADOW },
+    ],
+    reducedKeyframes: [{ boxShadow: NO_SHADOW }, { boxShadow: MISTAKE_SHADOW, offset: 0.3 }, { boxShadow: NO_SHADOW }],
+  },
+  [Effect.BoardShake]: {
+    part: EffectPart.Cell,
+    durationMs: 420,
+    easing: EASE_IN_OUT,
+    keyframes: [
+      { transform: "translateX(0)" },
+      { transform: "translateX(-8px) rotate(-0.6deg)", offset: 0.15 },
+      { transform: "translateX(7px) rotate(0.5deg)", offset: 0.35 },
+      { transform: "translateX(-5px) rotate(-0.3deg)", offset: 0.55 },
+      { transform: "translateX(3px)", offset: 0.75 },
+      { transform: "translateX(0)" },
+    ],
+    reducedKeyframes: null,
   },
 };
 

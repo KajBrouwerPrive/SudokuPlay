@@ -86,6 +86,17 @@
   background: var(--conflict-bg);
 }
 
+/* A hinted digit wears a small gold star in its corner. */
+.cell--hinted::after {
+  content: "✦";
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 0.45em;
+  line-height: 1;
+  color: var(--gold);
+}
+
 /* Colour is not the only signal: a wavy underline marks a clashing digit. */
 .cell--conflict .cell__value {
   text-decoration: underline wavy var(--conflict);
@@ -177,6 +188,22 @@
   position: absolute;
   border: 3px solid var(--gold);
   border-radius: 50%;
+}
+
+.fx-score {
+  font-family: var(--font-digits);
+  font-size: clamp(0.9rem, 3.6cqi, 1.4rem);
+  font-weight: 650;
+  color: var(--accent);
+  white-space: nowrap;
+  z-index: 3;
+  text-shadow: 0 1px 0 var(--surface), 0 0 6px var(--surface);
+}
+
+.fx-sparkle {
+  font-size: clamp(1.6rem, 9cqi, 3rem);
+  color: var(--gold);
+  z-index: 3;
 }
 
 .fx-confetti {
