@@ -18,6 +18,7 @@ A playful sudoku web app (PWA): Vite + React + TypeScript.
 
 ## Checks
 - Check command: `npm run check` (ESLint, type check of app and config, all Vitest tests). Run it once before saying work is done.
+- CI (`.github/workflows/ci.yml`) runs `npm run check` and `npm run build` on every pull request and on pushes to main.
 - Tests are Vitest, next to the code as `src/**/*.test.ts`. Puzzle fixtures live in `src/engine/__fixtures__/`. Use `fast-check` for properties that must hold for any puzzle.
 
 ## Git
