@@ -1,0 +1,108 @@
+/* Design tokens: every colour, radius, shadow and font lives here, for light and dark.
+   Style "soft candy": warm cream, rounded tiles on a peach tray, violet ink, gold for celebrations.
+   Colour pairs used for text are checked for WCAG AA contrast in tokens.test.ts. */
+:root {
+  /* Surfaces */
+  --bg: #fff6ec;
+  --bg-blob-1: #ffe3f1;
+  --bg-blob-2: #e4f3ff;
+  --surface: #ffffff;
+  --tray: #ffe4c8;
+  --box: #ffefdf;
+  --tile: #ffffff;
+  --tile-edge: #f0cfae;
+  --peer: #f4f0ff;
+  --same-digit: #e2dafe;
+
+  /* Ink */
+  --text: #3a2e4a;
+  --muted: #6e5f7d;
+  --given: #3a2e4a;
+  --entered: #5440d4;
+  --conflict: #b8233a;
+  --conflict-bg: #ffe1e5;
+
+  /* Accent: buttons, the cursor, rings */
+  --accent: #5440d4;
+  --accent-contrast: #ffffff;
+  --accent-glow: rgba(84, 64, 212, 0.14);
+  --gold: #ffc93c;
+
+  /* Keys (number pad and tools) */
+  --key: #ffffff;
+  --key-edge: #e9c7a6;
+  --key-done: #f6ecff;
+
+  /* Animation colours, read by the cue player */
+  --fx-conflict: rgba(229, 57, 83, 0.35);
+  --fx-sweep: rgba(120, 104, 255, 0.28);
+  --fx-wave: rgba(255, 201, 60, 0.5);
+
+  /* Shape */
+  --radius-board: 22px;
+  --radius-box: 14px;
+  --radius-tile: 9px;
+  --radius-key: 14px;
+  --radius-pill: 999px;
+  --app-width: 520px;
+  /* On large screens the app grows with the window height, so board and pad still fit without scrolling. */
+  --app-width-desktop: clamp(520px, calc(100dvh - 260px), 760px);
+  --board-padding: 8px;
+  --box-gap: 6px;
+  --cell-gap: 3px;
+  --tile-edge-width: 3px;
+  --key-edge-width: 4px;
+  --shadow-soft: 0 12px 32px rgba(120, 70, 30, 0.14);
+  --shadow-card: 0 18px 48px rgba(58, 46, 74, 0.28);
+
+  /* Type */
+  --font-digits: "Fredoka Variable", "Nunito Variable", system-ui, sans-serif;
+  --font-ui: "Nunito Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-cursor: 140ms;
+  --duration-press: 80ms;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1d1828;
+    --bg-blob-1: #2e1f3d;
+    --bg-blob-2: #1c2940;
+    --surface: #2a2338;
+    --tray: #2a2338;
+    --box: #312942;
+    --tile: #3b3250;
+    --tile-edge: #1a1524;
+    --peer: #4b4166;
+    --same-digit: #4a3f7a;
+
+    --text: #f4eefc;
+    --muted: #c4b8d6;
+    --given: #f4eefc;
+    --entered: #c3b9ff;
+    --conflict: #ffb3bd;
+    --conflict-bg: #5a2638;
+
+    --accent: #b4a8ff;
+    --accent-contrast: #1d1828;
+    --accent-glow: rgba(180, 168, 255, 0.16);
+    --gold: #ffd25e;
+
+    --key: #3b3250;
+    --key-edge: #15111d;
+    --key-done: #2f2840;
+
+    --fx-conflict: rgba(255, 110, 130, 0.35);
+    --fx-sweep: rgba(180, 168, 255, 0.3);
+    --fx-wave: rgba(255, 210, 94, 0.4);
+
+    --shadow-soft: 0 12px 32px rgba(0, 0, 0, 0.35);
+    --shadow-card: 0 18px 48px rgba(0, 0, 0, 0.5);
+
+    color-scheme: dark;
+  }
+}

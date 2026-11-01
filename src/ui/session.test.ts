@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CLASSIC_PUZZLE, CLASSIC_SOLUTION } from "../engine/__fixtures__/puzzles";
-import { Difficulty, EMPTY, GameEventType, parseGrid, type Puzzle } from "../engine";
+import { Difficulty, EMPTY, GameEventType, parseGrid, type Digit, type Puzzle } from "../engine";
 import { CommandType, Direction, type Command } from "./controls";
 import { EVENT_LOG_LIMIT, SessionActionType, createSession, sessionReducer, type Session } from "./session";
 
@@ -8,6 +8,11 @@ const PUZZLE: Puzzle = { puzzle: parseGrid(CLASSIC_PUZZLE), solution: parseGrid(
 
 const command = (session: Session, value: Command) => sessionReducer(session, { type: SessionActionType.Command, command: value });
 const select = (session: Session, cell: number) => sessionReducer(session, { type: SessionActionType.Select, cell });
+const arm = (session: Session, digit: Digit) => sessionReducer(session, { type: SessionActionType.ArmDigit, digit });
+const press = (session: Session, cell: number, secondary = false) => sessionReducer(session, { type: SessionActionType.PressCell, cell, secondary });
+
+/** Empty cells of the classic puzzle, in reading order. */
+const EMPTY_CELLS = [...PUZZLE.puzzle.keys()].filter((cell) => PUZZLE.puzzle[cell] === EMPTY);
 
 describe("sessionReducer", () => {
   it("ignores input until a cell is selected", () => {
@@ -55,5 +60,61 @@ describe("sessionReducer", () => {
     expect(notes.notesMode).toBe(true);
     const fresh = sessionReducer(select(notes, 2), { type: SessionActionType.NewGame, puzzle: PUZZLE });
     expect(fresh).toMatchObject({ notesMode: true, selected: null, log: [] });
+  });
+
+  describe("armed digit", () => {
+    it("arms a pad digit, switches to another, and lets go on a second click or Escape", () => {
+      let session = arm(createSession(PUZZLE), 4);
+      expect(session.armedDigit).toBe(4);
+      session = arm(session, 7);
+      expect(session.armedDigit).toBe(7);
+      expect(arm(session, 7).armedDigit).toBeNull();
+      expect(command(session, { type: CommandType.Disarm }).armedDigit).toBeNull();
+    });
+
+    it("only selects a pressed cell while nothing is armed", () => {
+      const session = press(createSession(PUZZLE), 2, true);
+      expect(session.selected).toBe(2);
+      expect(session.game.notes[2]).toBe(0);
+      expect(session.lastBatch).toBeNull();
+    });
+
+    it("places the armed digit with a left click and notes it with a right click", () => {
+      let session = arm(createSession(PUZZLE), 4);
+      session = press(session, 2);
+      expect(session.game.values[2]).toBe(4);
+      expect(session.selected).toBe(2);
+      session = press(session, 3, true);
+      expect(session.game.values[3]).toBe(EMPTY);
+      expect(session.lastBatch?.events).toEqual([{ type: GameEventType.NoteToggled, cell: 3, digit: 4, added: true }]);
+      // A second right click takes the note away again.
+      expect(press(session, 3, true).game.notes[3]).toBe(0);
+    });
+
+    it("notes with a left click in notes mode", () => {
+      let session = command(arm(createSession(PUZZLE), 4), { type: CommandType.ToggleNotesMode });
+      session = press(session, 2);
+      expect(session.game.values[2]).toBe(EMPTY);
+      expect(session.game.notes[2]).not.toBe(0);
+    });
+
+    it("only selects givens, so clicking around does not bonk", () => {
+      const session = press(arm(createSession(PUZZLE), 4), 0);
+      expect(session.selected).toBe(0);
+      expect(session.lastBatch).toBeNull();
+    });
+
+    it("lets go of a digit once all nine are placed", () => {
+      const solution = PUZZLE.solution;
+      const cellsOfOne = EMPTY_CELLS.filter((cell) => solution[cell] === 1);
+      let session = arm(createSession(PUZZLE), 1);
+      for (const cell of cellsOfOne) session = press(session, cell);
+      expect(session.lastBatch?.events.map((event) => event.type)).toContain(GameEventType.DigitCompleted);
+      expect(session.armedDigit).toBeNull();
+    });
+
+    it("starts a new game with nothing armed", () => {
+      expect(sessionReducer(arm(createSession(PUZZLE), 4), { type: SessionActionType.NewGame, puzzle: PUZZLE }).armedDigit).toBeNull();
+    });
   });
 });

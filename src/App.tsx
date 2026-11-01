@@ -41,10 +41,10 @@ function rememberInUrl(difficulty: Difficulty, seed: number): void {
 
 export function App() {
   const [session, dispatch] = useReducer(sessionReducer, undefined, () => createSession(createPuzzle(initialPuzzleOptions())));
-  const { game, selected, notesMode, log, lastBatch } = session;
+  const { game, selected, notesMode, armedDigit, log, lastBatch } = session;
   const reducedMotion = usePrefersReducedMotion();
   const { rootRef, fxLayerRef, playEvents, stopAll, setTimeScale } = useAnimations(lastBatch, reducedMotion);
-  const cells = useMemo(() => cellViews(game, selected), [game, selected]);
+  const cells = useMemo(() => cellViews(game, selected, armedDigit), [game, selected, armedDigit]);
   const remaining = useMemo(() => remainingByDigit(game), [game]);
 
   useEffect(() => rememberInUrl(game.difficulty, game.seed), [game.difficulty, game.seed]);
@@ -70,9 +70,17 @@ export function App() {
   return (
     <main className="app" ref={rootRef}>
       <header className="toolbar">
-        <h1>SudokuPlay</h1>
+        <h1>
+          Sudoku<span>Play</span>
+        </h1>
+        <button type="button" className="button--primary" onClick={() => startNewGame(game.difficulty)}>
+          Nieuw spel
+        </button>
+      </header>
+
+      <div className="game-bar">
         <label>
-          Niveau{" "}
+          <span className="visually-hidden">Niveau</span>
           <select value={game.difficulty} onChange={(event) => startNewGame(event.target.value as Difficulty)}>
             {DIFFICULTIES.map((difficulty) => (
               <option key={difficulty} value={difficulty}>
@@ -81,19 +89,21 @@ export function App() {
             ))}
           </select>
         </label>
-        <button type="button" onClick={() => startNewGame(game.difficulty)}>
-          Nieuw spel
-        </button>
-      </header>
-
-      <p className="status" role="status">
-        Fouten: <span className="status__mistakes" data-control={Control.Mistakes}>{game.mistakes}</span> · Seed {game.seed}
-      </p>
+        <p className="status" role="status">
+          <span className="status__chip">
+            Fouten{" "}
+            <span className="status__mistakes" data-control={Control.Mistakes}>
+              {game.mistakes}
+            </span>
+          </span>
+          {import.meta.env.DEV && <span className="status__chip">Seed {game.seed}</span>}
+        </p>
+      </div>
 
       <Board
         cells={cells}
         fxLayerRef={fxLayerRef}
-        onSelect={(cell) => dispatch({ type: SessionActionType.Select, cell })}
+        onPress={(cell, secondary) => dispatch({ type: SessionActionType.PressCell, cell, secondary })}
         overlay={
           game.status === GameStatus.Solved && (
             <div className="solved-card" data-control={Control.SolvedCard} role="status">
@@ -101,7 +111,7 @@ export function App() {
               <span>
                 {DIFFICULTY_LABELS[game.difficulty]} · {game.mistakes === 0 ? "zonder fouten" : `${game.mistakes} ${game.mistakes === 1 ? "fout" : "fouten"}`}
               </span>
-              <button type="button" onClick={() => startNewGame(game.difficulty)}>
+              <button type="button" className="button--primary" onClick={() => startNewGame(game.difficulty)}>
                 Nog een
               </button>
             </div>
@@ -112,14 +122,18 @@ export function App() {
       <NumberPad
         remaining={remaining}
         notesMode={notesMode}
-        onDigit={(digit: Digit) => run({ type: CommandType.Input, digit, asNote: notesMode })}
+        armedDigit={armedDigit}
+        onDigit={(digit: Digit) => dispatch({ type: SessionActionType.ArmDigit, digit })}
         onErase={() => run({ type: CommandType.Erase })}
         onUndo={() => run({ type: CommandType.Undo })}
         onRedo={() => run({ type: CommandType.Redo })}
         onToggleNotes={() => run({ type: CommandType.ToggleNotesMode })}
       />
 
-      <p className="hint">Toetsen: 1-9 plaatsen, Shift+cijfer notitie, N notitiemodus, pijltjes bewegen, Backspace wissen, Ctrl+Z / Ctrl+Y.</p>
+      <p className="hint">
+        Muis: kies onderin een cijfer, dan linksklik (of tik) plaatsen en rechtsklik (of lang indrukken) notitie (Esc laat los). Toetsen: 1-9 plaatsen, Shift+cijfer notitie,
+        N notitiemodus, pijltjes bewegen, Backspace wissen, Ctrl+Z / Ctrl+Y.
+      </p>
 
       {import.meta.env.DEV && <DevPanel game={game} selected={selected} log={log} playEvents={playEvents} setTimeScale={setTimeScale} />}
     </main>

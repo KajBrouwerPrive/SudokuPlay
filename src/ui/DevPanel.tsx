@@ -2,6 +2,7 @@
 // follow the raw engine events. Not rendered in production builds.
 import { useState } from "react";
 import { ActionType, GameEventType, PEERS, RejectReason, UNITS_OF_CELL, type Digit, type GameEvent, type GameState } from "../engine";
+import "./DevPanel.css";
 import { EventLog } from "./EventLog";
 import type { LoggedEvent } from "./session";
 

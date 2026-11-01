@@ -31,6 +31,8 @@ export const CommandType = {
   Redo: "redo",
   Move: "move",
   ToggleNotesMode: "toggleNotesMode",
+  /** Lets go of the digit armed on the number pad. */
+  Disarm: "disarm",
 } as const;
 
 export type Command =
@@ -39,7 +41,8 @@ export type Command =
   | { type: typeof CommandType.Undo }
   | { type: typeof CommandType.Redo }
   | { type: typeof CommandType.Move; direction: Direction }
-  | { type: typeof CommandType.ToggleNotesMode };
+  | { type: typeof CommandType.ToggleNotesMode }
+  | { type: typeof CommandType.Disarm };
 
 /** The parts of a KeyboardEvent the mapping needs, so tests can pass plain objects. */
 export interface KeyInput {
@@ -61,6 +64,7 @@ const ARROW_DIRECTIONS: Readonly<Record<string, Direction>> = {
 };
 const ERASE_KEYS = new Set(["Backspace", "Delete", "0"]);
 const NOTES_MODE_KEY = "n";
+const DISARM_KEY = "Escape";
 const UNDO_KEY = "z";
 const REDO_KEY = "y";
 /** Matches the physical digit keys, so Shift+3 still reads as 3 on any layout. */
@@ -97,6 +101,7 @@ function commandForKey(input: KeyInput, notesMode: boolean): Command | null {
   if (direction) return { type: CommandType.Move, direction };
   if (ERASE_KEYS.has(input.key)) return { type: CommandType.Erase };
   if (key === NOTES_MODE_KEY) return { type: CommandType.ToggleNotesMode };
+  if (input.key === DISARM_KEY) return { type: CommandType.Disarm };
   const digit = digitFrom(input);
   if (digit) return { type: CommandType.Input, digit, asNote: notesMode !== input.shiftKey };
   return null;
@@ -130,24 +135,28 @@ export interface CellView {
   selected: boolean;
   /** Shares a row, column or box with the selected cell. */
   peer: boolean;
-  /** Holds the same digit as the selected cell. */
+  /** Holds the armed digit, or else the same digit as the selected cell. */
   sameDigit: boolean;
+  /** That same digit when this empty cell has it as a note, so the note can light up. */
+  highlightedNote: Digit | null;
   conflict: boolean;
 }
 
-export function cellViews(state: GameState, selected: number | null): CellView[] {
+export function cellViews(state: GameState, selected: number | null, armedDigit: Digit | null = null): CellView[] {
   const conflicts = new Set(findConflictingCells(state.values));
   const peers = new Set(selected === null ? [] : PEERS[selected]);
-  const selectedValue = selected === null ? EMPTY : state.values[selected];
+  const highlightedDigit = armedDigit ?? (selected === null ? EMPTY : state.values[selected]);
   return Array.from({ length: CELL_COUNT }, (_, cell) => {
     const value = state.values[cell];
+    const notes = value === EMPTY ? candidateDigits(state.notes[cell]) : [];
     return {
       value: value === EMPTY ? null : (value as Digit),
-      notes: value === EMPTY ? candidateDigits(state.notes[cell]) : [],
+      notes,
       given: state.givens[cell] !== EMPTY,
       selected: cell === selected,
       peer: peers.has(cell),
-      sameDigit: selectedValue !== EMPTY && value === selectedValue,
+      sameDigit: highlightedDigit !== EMPTY && value === highlightedDigit,
+      highlightedNote: notes.find((note) => note === highlightedDigit) ?? null,
       conflict: conflicts.has(cell),
     };
   });

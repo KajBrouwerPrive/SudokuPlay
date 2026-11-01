@@ -1,6 +1,8 @@
 // The animation vocabulary: what each effect looks like, as Web Animations keyframes.
 // Every effect animates only transform, opacity or box-shadow, so it stays smooth on phones.
 // `reducedKeyframes` is the prefers-reduced-motion version: no movement, or null to skip it.
+// Colours are design tokens written as var(--name); the player resolves them with `resolveTokens`,
+// because not every browser resolves custom properties inside Web Animations keyframes.
 
 export const Effect = {
   /** A correct digit lands: squash and stretch. */
@@ -79,10 +81,10 @@ const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
 const EASE_IN_OUT = "ease-in-out";
 
 const REDUCED_DURATION_MS = 150;
-const CONFLICT_SHADOW = "inset 0 0 0 999px rgba(229, 57, 53, 0.35)";
-const SWEEP_SHADOW = "inset 0 0 0 999px rgba(120, 160, 255, 0.3)";
+const CONFLICT_SHADOW = "inset 0 0 0 999px var(--fx-conflict)";
+const SWEEP_SHADOW = "inset 0 0 0 999px var(--fx-sweep)";
 const NO_SHADOW = "inset 0 0 0 999px rgba(0, 0, 0, 0)";
-const WAVE_SHADOW = "inset 0 0 0 999px rgba(255, 196, 0, 0.35)";
+const WAVE_SHADOW = "inset 0 0 0 999px var(--fx-wave)";
 
 const fadeIn: Keyframe[] = [{ opacity: 0 }, { opacity: 1 }];
 const fadeOut: Keyframe[] = [{ opacity: 1 }, { opacity: 0 }];
@@ -305,4 +307,18 @@ export const EFFECTS: Readonly<Record<Effect, EffectSpec>> = {
 /** The reduced version of an effect only fades or flashes, so it is always short. */
 export function durationFor(effect: Effect, reducedMotion: boolean): number {
   return reducedMotion ? REDUCED_DURATION_MS : EFFECTS[effect].durationMs;
+}
+
+const TOKEN_REFERENCE = /var\((--[\w-]+)\)/g;
+
+/** Replaces every var(--token) in the keyframes with its value; unknown tokens are left as they are. */
+export function resolveTokens(keyframes: readonly Keyframe[], valueOf: (token: string) => string): Keyframe[] {
+  return keyframes.map((frame) =>
+    Object.fromEntries(
+      Object.entries(frame).map(([property, value]) => [
+        property,
+        typeof value === "string" ? value.replace(TOKEN_REFERENCE, (reference, token: string) => valueOf(token).trim() || reference) : value,
+      ]),
+    ),
+  );
 }

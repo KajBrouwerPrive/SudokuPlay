@@ -1,0 +1,220 @@
+/* The board, its cells, the selection cursor and the animation fx layer.
+   Look: a peach tray holding nine box islands of rounded tiles; each tile stands on a darker edge. */
+.board-frame {
+  position: relative;
+  /* Digits size with the board (cqi units), so they grow on a desktop and shrink on a phone. */
+  container-type: inline-size;
+}
+
+.board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: var(--box-gap);
+  padding: var(--board-padding);
+  aspect-ratio: 1;
+  border-radius: var(--radius-board);
+  background: var(--tray);
+  box-shadow: var(--shadow-soft);
+  user-select: none;
+  /* No iOS callout or double-tap zoom: a long press on a cell is a game action. */
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+
+.board__box {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: var(--cell-gap);
+  padding: var(--cell-gap);
+  border-radius: var(--radius-box);
+  background: var(--box);
+  min-width: 0;
+  min-height: 0;
+}
+
+.cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  /* A border, not a shadow, for the edge: animations use box-shadow and would hide it. */
+  border-bottom: var(--tile-edge-width) solid var(--tile-edge);
+  border-radius: var(--radius-tile);
+  box-shadow: none;
+  background: var(--tile);
+  font-family: var(--font-digits);
+  font-size: clamp(1.1rem, 6.2cqi, 2.6rem);
+  font-weight: 500;
+  line-height: 1;
+  color: var(--entered);
+  transition: background-color 120ms ease-out;
+}
+
+/* Cells do not sink like keys: the gliding cursor already answers the tap. */
+.cell:active:not(:disabled) {
+  translate: none;
+  box-shadow: none;
+}
+
+.cell:focus-visible {
+  outline: none;
+}
+
+.cell--given {
+  color: var(--given);
+  font-weight: 650;
+}
+
+.cell--peer {
+  background: var(--peer);
+}
+
+/* An outline, not a shadow: animations use box-shadow and would hide it while they play. */
+.cell--same-digit {
+  background: var(--same-digit);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.cell--conflict {
+  color: var(--conflict);
+  background: var(--conflict-bg);
+}
+
+/* Colour is not the only signal: a wavy underline marks a clashing digit. */
+.cell--conflict .cell__value {
+  text-decoration: underline wavy var(--conflict);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.cell__value,
+.notes > span {
+  display: inline-block;
+}
+
+.notes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+  height: 100%;
+  padding: 2px;
+  place-items: center;
+  font-family: var(--font-ui);
+  font-size: clamp(0.5rem, 2.4cqi, 1.05rem);
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* The note of the armed (or selected) digit lights up, so candidates for it stand out. */
+.notes > .notes__digit--highlighted {
+  width: 1.5em;
+  height: 1.5em;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* Selection cursor: one element that glides between cells; positioned by Board.tsx. */
+.selection-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 3px solid var(--accent);
+  border-radius: var(--radius-tile);
+  background: var(--accent-glow);
+  pointer-events: none;
+  z-index: 1;
+  transition:
+    transform var(--duration-cursor) var(--ease-out),
+    width var(--duration-cursor) var(--ease-out),
+    height var(--duration-cursor) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .selection-cursor {
+    transition: none;
+  }
+}
+
+/* Animation support: the fx layer holds temporary ghosts and the confetti canvas. */
+.fx-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.fx-ghost {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  will-change: transform, opacity;
+}
+
+.fx-ghost--value {
+  font-family: var(--font-digits);
+  font-size: clamp(1.1rem, 6.2cqi, 2.6rem);
+  font-weight: 500;
+  color: var(--entered);
+}
+
+.fx-ghost--note {
+  font-family: var(--font-ui);
+  font-size: clamp(0.5rem, 2.4cqi, 1.05rem);
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.fx-ring {
+  position: absolute;
+  border: 3px solid var(--gold);
+  border-radius: 50%;
+}
+
+.fx-confetti {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* The solved card: a sticker slapped on the board, slightly askew. */
+.solved-card {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  translate: -50% -50%;
+  rotate: -3deg;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 32px 24px;
+  border-radius: 24px;
+  background: var(--surface);
+  border: 4px solid var(--gold);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+  font-weight: 650;
+}
+
+.solved-card > span {
+  white-space: nowrap;
+}
+
+.solved-card__title {
+  font-family: var(--font-digits);
+  font-size: 2.2rem;
+  font-weight: 650;
+  color: var(--accent);
+}
