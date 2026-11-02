@@ -6,6 +6,7 @@ import {
   GameEventType,
   GameStatus,
   applyAction,
+  countEmpty,
   createGame,
   createScore,
   isGiven,
@@ -98,7 +99,11 @@ function play(session: Session, action: GameAction): Session {
   const { state, events } = applyAction(session.game, action);
   if (events.length === 0) return state === session.game ? session : { ...session, game: state };
   const logged = events.map((event, index) => ({ id: session.nextEventId + index, event })).reverse();
-  const { score, awards } = scoreEvents(session.score, events, { difficulty: state.difficulty, elapsedMs: session.elapsedMs });
+  const { score, awards } = scoreEvents(session.score, events, {
+    difficulty: state.difficulty,
+    elapsedMs: session.elapsedMs,
+    openCells: countEmpty(state.givens),
+  });
   return {
     ...session,
     game: state,

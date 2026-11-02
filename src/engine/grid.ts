@@ -117,3 +117,7 @@ export function countFilled(grid: Grid): number {
   for (const value of grid) if (value !== EMPTY) filled++;
   return filled;
 }
+
+export function countEmpty(grid: Grid): number {
+  return CELL_COUNT - countFilled(grid);
+}

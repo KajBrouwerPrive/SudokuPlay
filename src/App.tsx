@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Control } from "./animation/choreograph";
 import { useAnimations, usePrefersReducedMotion } from "./animation/useAnimations";
-import { DIFFICULTIES, Difficulty, GameEventType, GameStatus, createPuzzle, multiplierFor, remainingByDigit, type Digit } from "./engine";
+import { DIFFICULTIES, Difficulty, GameEventType, GameStatus, countEmpty, createPuzzle, multiplierFor, remainingByDigit, type Digit } from "./engine";
 import { GameOutcome } from "./stats/stats";
 import { loadStats, recordGame } from "./stats/storage";
 import { Board } from "./ui/Board";
@@ -69,7 +69,7 @@ export function App() {
   const onElapsed = useCallback((ms: number) => dispatch({ type: SessionActionType.Tick, elapsedMs: ms }), []);
   const giveHint = useCallback(() => dispatch({ type: SessionActionType.Command, command: { type: CommandType.Hint } }), []);
   const hint = useHintConfirm(giveHint);
-  const multiplier = multiplierFor(score.combo);
+  const multiplier = multiplierFor(score.combo, countEmpty(game.givens));
 
   // The page has two views; the game stays mounted (hidden) on the stats page, so nothing is lost.
   const [view, setView] = useState<View>(viewFromUrl);
