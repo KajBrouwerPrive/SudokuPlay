@@ -11,6 +11,7 @@ import {
   MAX_MISTAKE_PENALTY,
   MAX_SPEED_BONUS,
   MISTAKE_PENALTY_STEP,
+  REFERENCE_OPEN_CELLS,
   SOLVE_BONUS,
   TARGET_TIME_MS,
   UNIT_BONUS,
@@ -23,7 +24,11 @@ import {
   type ScoreContext,
 } from "./scoring";
 
-const CONTEXT: ScoreContext = { difficulty: Difficulty.Medium, elapsedMs: TARGET_TIME_MS[Difficulty.Medium] };
+const CONTEXT: ScoreContext = {
+  difficulty: Difficulty.Medium,
+  elapsedMs: TARGET_TIME_MS[Difficulty.Medium],
+  openCells: REFERENCE_OPEN_CELLS,
+};
 const BASE = BASE_POINTS[Difficulty.Medium];
 
 const correct = (cell: number, digit: Digit = 1): GameEvent => ({ type: GameEventType.CellPlaced, cell, digit, correct: true });
@@ -46,9 +51,13 @@ describe("scoring", () => {
   });
 
   it("caps the combo multiplier", () => {
-    expect(multiplierFor(0)).toBe(1);
-    expect(multiplierFor(5)).toBeCloseTo(1.5);
-    expect(multiplierFor(100)).toBe(MAX_MULTIPLIER);
+    expect(multiplierFor(0, REFERENCE_OPEN_CELLS)).toBe(1);
+    expect(multiplierFor(5, REFERENCE_OPEN_CELLS)).toBeCloseTo(1.5);
+    expect(multiplierFor(100, REFERENCE_OPEN_CELLS)).toBe(MAX_MULTIPLIER);
+  });
+
+  it("climbs the combo slower on a puzzle with more open cells", () => {
+    expect(multiplierFor(10, REFERENCE_OPEN_CELLS * 2)).toBeCloseTo(1.5);
   });
 
   it("pays every cell only once, so undo and replay cannot farm points", () => {
@@ -71,10 +80,10 @@ describe("scoring", () => {
     expect(scoreEvents(createScore(), wrong(2), CONTEXT).score.points).toBe(-MISTAKE_PENALTY_STEP * BASE);
   });
 
-  it("weighs one mistake heavier than the whole speed bonus", () => {
-    const lostByMistake = mistakePenalty(1, Difficulty.Medium) + FLAWLESS_BONUS * BASE;
-    expect(lostByMistake).toBeGreaterThan(MAX_SPEED_BONUS * BASE);
-    expect(mistakePenalty(1, Difficulty.Medium)).toBeGreaterThanOrEqual((MAX_SPEED_BONUS * BASE) / 2);
+  it("weighs one mistake as at least half the speed bonus, and two heavier than all of it", () => {
+    const lostByOneMistake = mistakePenalty(1, Difficulty.Medium) + FLAWLESS_BONUS * BASE;
+    expect(lostByOneMistake).toBeGreaterThanOrEqual((MAX_SPEED_BONUS * BASE) / 2);
+    expect(lostByOneMistake + mistakePenalty(2, Difficulty.Medium)).toBeGreaterThan(MAX_SPEED_BONUS * BASE);
   });
 
   it("does not halve a score that is zero or below", () => {
@@ -119,6 +128,32 @@ describe("scoring", () => {
     expect(solvedWithMistake.awards.map((award) => award.reason)).toEqual([AwardReason.Solve]);
     const hinted = { ...createScore(), hints: 1 };
     expect(scoreEvents(hinted, [{ type: GameEventType.PuzzleSolved, mistakes: 0 }], CONTEXT).awards.map((award) => award.reason)).toEqual([AwardReason.Solve]);
+  });
+
+  it("pays every puzzle of a level about the same for the same clean play, however many cells it leaves open", () => {
+    const digitTotal = (difficulty: Difficulty, openCells: number) => {
+      const context = { ...CONTEXT, difficulty, openCells };
+      let score = createScore();
+      for (let cell = 0; cell < openCells; cell++) score = scoreEvents(score, [correct(cell)], context).score;
+      return score.points;
+    };
+    for (const difficulty of Object.values(Difficulty)) {
+      const reference = digitTotal(difficulty, REFERENCE_OPEN_CELLS);
+      // Only the combo climbing in whole digits remains: less than one plain digit is worth.
+      for (let openCells = 35; openCells <= 64; openCells++) {
+        expect(Math.abs(digitTotal(difficulty, openCells) - reference)).toBeLessThan(BASE_POINTS[difficulty]);
+      }
+    }
+  });
+
+  it("makes a faster clean solve always worth more than a slower one", () => {
+    let previous = Infinity;
+    for (let seconds = 0; seconds <= 900; seconds += 15) {
+      const bonus = speedBonus({ ...CONTEXT, elapsedMs: seconds * 1_000 });
+      expect(bonus).toBeLessThanOrEqual(previous);
+      if (previous !== Infinity && previous > 0) expect(bonus).toBeLessThan(previous);
+      previous = bonus;
+    }
   });
 
   it("gives no speed bonus at or after the target time", () => {

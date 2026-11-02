@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { CLASSIC_PUZZLE, CLASSIC_SOLUTION } from "../engine/__fixtures__/puzzles";
-import { AwardReason, BASE_POINTS, Difficulty, EMPTY, GameEventType, GameStatus, parseGrid, type Digit, type Puzzle } from "../engine";
+import { AwardReason, Difficulty, EMPTY, countEmpty, digitPoints, GameEventType, GameStatus, parseGrid, type Digit, type Puzzle } from "../engine";
 import { CommandType, Direction, type Command } from "./controls";
 import { GameOutcome } from "../stats/stats";
 import { EVENT_LOG_LIMIT, SessionActionType, createSession, isAbandonable, sessionReducer, toGameRecord, type Session } from "./session";
 
 const PUZZLE: Puzzle = { puzzle: parseGrid(CLASSIC_PUZZLE), solution: parseGrid(CLASSIC_SOLUTION), difficulty: Difficulty.Easy, seed: 7 };
+/** The first correct digit's points, scaled to how many cells this puzzle leaves open. */
+const FIRST_DIGIT_POINTS = Math.round(digitPoints(0, { difficulty: Difficulty.Easy, elapsedMs: 0, openCells: countEmpty(PUZZLE.puzzle) }));
 
 const command = (session: Session, value: Command) => sessionReducer(session, { type: SessionActionType.Command, command: value });
 const select = (session: Session, cell: number) => sessionReducer(session, { type: SessionActionType.Select, cell });
@@ -134,7 +136,7 @@ describe("sessionReducer", () => {
         finishedAt: finishedAt.toISOString(),
         difficulty: Difficulty.Easy,
         seed: 7,
-        points: BASE_POINTS[Difficulty.Easy],
+        points: FIRST_DIGIT_POINTS,
         mistakes: 0,
         hints: 0,
         durationMs: 61_000,
@@ -154,8 +156,8 @@ describe("sessionReducer", () => {
   describe("score, time and hints", () => {
     it("scores a correct digit and reports the award with the batch", () => {
       const session = command(select(createSession(PUZZLE), 2), { type: CommandType.Input, digit: 4, asNote: false });
-      expect(session.score.points).toBe(BASE_POINTS[Difficulty.Easy]);
-      expect(session.lastBatch?.awards).toEqual([{ reason: AwardReason.Digit, points: BASE_POINTS[Difficulty.Easy], cell: 2 }]);
+      expect(session.score.points).toBe(FIRST_DIGIT_POINTS);
+      expect(session.lastBatch?.awards).toEqual([{ reason: AwardReason.Digit, points: FIRST_DIGIT_POINTS, cell: 2 }]);
     });
 
     it("counts play time only while playing", () => {
@@ -169,7 +171,7 @@ describe("sessionReducer", () => {
       let session = command(select(createSession(PUZZLE), 2), { type: CommandType.Input, digit: 4, asNote: false });
       session = command(select(session, 3), { type: CommandType.Hint });
       expect(session.game.values[3]).toBe(PUZZLE.solution[3]);
-      expect(session.score.points).toBe(BASE_POINTS[Difficulty.Easy] / 2);
+      expect(session.score.points).toBe(FIRST_DIGIT_POINTS - Math.ceil(FIRST_DIGIT_POINTS / 2));
       expect(session.lastBatch?.events[0].type).toBe(GameEventType.HintUsed);
     });
 
