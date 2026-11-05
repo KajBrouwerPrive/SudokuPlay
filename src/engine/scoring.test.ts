@@ -15,6 +15,7 @@ import {
   NOTES_BUDGET_PER_CELL,
   REFERENCE_OPEN_CELLS,
   SOLVE_BONUS,
+  AVERAGE_TIME_MS,
   SPEED_HALF_LIFE_MS,
   SPEED_TOP_TIME_MS,
   UNIT_BONUS,
@@ -173,6 +174,13 @@ describe("scoring", () => {
     it("pays the full bonus up to the top time, and nothing extra for going faster", () => {
       expect(bonusAt(0)).toBe(BASE * MAX_SPEED_BONUS);
       expect(bonusAt(TOP_MS)).toBe(BASE * MAX_SPEED_BONUS);
+    });
+
+    it("pays an average solve half the speed bonus", () => {
+      for (const difficulty of Object.values(Difficulty)) {
+        const bonus = speedBonus({ ...CONTEXT, difficulty, elapsedMs: AVERAGE_TIME_MS[difficulty] });
+        expect(bonus).toBe(Math.round((BASE_POINTS[difficulty] * MAX_SPEED_BONUS) / 2));
+      }
     });
 
     it("halves with every half-life slower than the top time", () => {

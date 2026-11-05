@@ -85,6 +85,8 @@ export function ScoreBreakdownPanel({ breakdown, solved }: ScoreBreakdownPanelPr
           −{formatPoints(breakdown.nextMistakePenalty)}
           {breakdown.flawlessPossible && " + foutloos-bonus"}
         </dd>
+        <dt>Gemiddelde tijd</dt>
+        <dd>{formatDuration(breakdown.averageTimeMs)}</dd>
         <dt>Tijd / toptijd</dt>
         <dd>
           {formatDuration(breakdown.elapsedMs)} / {formatDuration(breakdown.topTimeMs)}
