@@ -12,7 +12,10 @@
   --tile: #ffffff;
   --tile-edge: #f0cfae;
   --peer: #f4f0ff;
-  --same-digit: #e2dafe;
+  /* Every copy of the armed (or selected) digit: a filled accent tile, so all copies stand out on a full board. */
+  --same-digit: #5440d4;
+  --same-digit-text: #ffffff;
+  --same-digit-edge: #3a2a9e;
 
   /* Ink */
   --text: #3a2e4a;
@@ -79,7 +82,9 @@
     --tile: #3b3250;
     --tile-edge: #1a1524;
     --peer: #4b4166;
-    --same-digit: #4a3f7a;
+    --same-digit: #b4a8ff;
+    --same-digit-text: #1d1828;
+    --same-digit-edge: #7d6fd6;
 
     --text: #f4eefc;
     --muted: #c4b8d6;
