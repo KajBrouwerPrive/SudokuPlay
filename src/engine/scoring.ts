@@ -2,17 +2,19 @@
 // new score plus one award per change, which the UI animates ("+15", "÷2").
 //
 // Rules: correct digits earn the level's base points times a combo multiplier that grows with
-// every correct digit in a row; completing a unit, a digit or the puzzle adds bonuses, with extra
-// for a flawless or fast solve. A mistake costs more with every mistake and resets the combo; a
-// hint halves positive points. Digit points are scaled to a fixed number of open cells, so every
-// puzzle of a level pays the same for the same play, and time is what sets two clean solves apart.
-// Mistakes weigh more than slowness: the first one costs more than half the speed bonus (penalty
-// plus the lost flawless bonus), two cost more than all of it. Points may go below zero
-// during play, so an early mistake is not free.
-// Solving without pencil marks earns a notes bonus that shrinks with every distinct mark placed;
-// it weighs a little less than the speed bonus. Marks count when placed and are never taken back,
-// so erasing or undoing them does not restore the bonus. Every cell, unit and digit pays out once, so undo
-// and replay cannot farm points, and like mistakes, penalties are never undone.
+// every correct digit in a row; completing a unit, a digit or the puzzle adds small bonuses. A
+// mistake costs more with every mistake and resets the combo; a hint halves positive points. Digit
+// points are scaled to a fixed number of open cells, so every puzzle of a level pays the same for
+// the same play. Points may go below zero during play, so an early mistake is not free.
+//
+// How well a puzzle is solved weighs more than solving it: the flawless, speed and notes bonuses
+// together are worth more than all points for filling the grid. Flawless weighs most, then speed,
+// then few pencil marks, with speed and notes close together. The first mistake costs more than the
+// whole speed bonus (penalty plus the lost flawless bonus).
+// The notes bonus shrinks with every distinct pencil mark placed. Marks count when placed and are
+// never taken back, so erasing or undoing them does not restore the bonus. Every cell, unit and
+// digit pays out once, so undo and replay cannot farm points, and like mistakes, penalties are
+// never undone.
 import { GameEventType, type GameEvent } from "./game";
 import { Difficulty } from "./grader";
 import { DIGITS, type Digit, type Unit } from "./grid";
@@ -41,14 +43,14 @@ export const COMBO_STEP = 0.1;
 export const MAX_MULTIPLIER = 2;
 
 /** Bonuses, in multiples of the level's base points. */
-export const UNIT_BONUS = 2;
-export const DIGIT_BONUS = 3;
-export const SOLVE_BONUS = 20;
-export const FLAWLESS_BONUS = 10;
+export const UNIT_BONUS = 1;
+export const DIGIT_BONUS = 1;
+export const SOLVE_BONUS = 10;
+export const FLAWLESS_BONUS = 120;
 /** The speed bonus for an instant solve; it shrinks linearly to zero at the target time. */
-export const MAX_SPEED_BONUS = 30;
+export const MAX_SPEED_BONUS = 80;
 /** The notes bonus for a solve without pencil marks; it shrinks linearly to zero at the budget. */
-export const MAX_NOTES_BONUS = 20;
+export const MAX_NOTES_BONUS = 60;
 /** Distinct pencil marks per open cell at which the notes bonus reaches zero. */
 export const NOTES_BUDGET_PER_CELL = 2;
 /** The n-th mistake costs n times this, in base points, up to the maximum per mistake. */

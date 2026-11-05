@@ -84,10 +84,21 @@ describe("scoring", () => {
     expect(scoreEvents(createScore(), wrong(2), CONTEXT).score.points).toBe(-MISTAKE_PENALTY_STEP * BASE);
   });
 
-  it("weighs one mistake as at least half the speed bonus, and two heavier than all of it", () => {
+  it("weighs one mistake heavier than the whole speed bonus", () => {
     const lostByOneMistake = mistakePenalty(1, Difficulty.Medium) + FLAWLESS_BONUS * BASE;
-    expect(lostByOneMistake).toBeGreaterThanOrEqual((MAX_SPEED_BONUS * BASE) / 2);
-    expect(lostByOneMistake + mistakePenalty(2, Difficulty.Medium)).toBeGreaterThan(MAX_SPEED_BONUS * BASE);
+    expect(lostByOneMistake).toBeGreaterThan(MAX_SPEED_BONUS * BASE);
+  });
+
+  it("ranks flawless over speed over notes, with speed and notes close together", () => {
+    expect(FLAWLESS_BONUS).toBeGreaterThan(MAX_SPEED_BONUS);
+    expect(MAX_SPEED_BONUS).toBeGreaterThan(MAX_NOTES_BONUS);
+    expect(MAX_SPEED_BONUS - MAX_NOTES_BONUS).toBeLessThan(FLAWLESS_BONUS - MAX_SPEED_BONUS);
+  });
+
+  it("makes how well a puzzle is solved worth more than filling the grid", () => {
+    // Every digit at the maximum multiplier, every unit, every digit and the solve itself.
+    const gridPoints = REFERENCE_OPEN_CELLS * MAX_MULTIPLIER + ROWS.length * 3 * UNIT_BONUS + 9 * DIGIT_BONUS + SOLVE_BONUS;
+    expect(FLAWLESS_BONUS + MAX_SPEED_BONUS + MAX_NOTES_BONUS).toBeGreaterThan(gridPoints);
   });
 
   it("does not halve a score that is zero or below", () => {
@@ -200,10 +211,6 @@ describe("scoring", () => {
       expect(notesBonus(budget, wide)).toBe(Math.round((BASE * MAX_NOTES_BONUS) / 2));
     });
 
-    it("weighs a little less than speed", () => {
-      expect(MAX_NOTES_BONUS).toBeLessThan(MAX_SPEED_BONUS);
-      expect(MAX_NOTES_BONUS).toBeGreaterThanOrEqual(MAX_SPEED_BONUS / 2);
-    });
   });
 
   describe("score breakdown", () => {
