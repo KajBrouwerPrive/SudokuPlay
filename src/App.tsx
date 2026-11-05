@@ -13,7 +13,7 @@ import { formatDuration, formatMultiplier, formatPoints } from "./ui/format";
 import { ChartIcon } from "./ui/Icons";
 import { NumberPad } from "./ui/NumberPad";
 import { ScoreBreakdownPanel } from "./ui/ScoreBreakdownPanel";
-import { SessionActionType, createSession, isAbandonable, sessionReducer, toGameRecord, type Session } from "./ui/session";
+import { SessionActionType, createSession, isAbandonable, isClockRunning, sessionReducer, toGameRecord, type Session } from "./ui/session";
 import { StatsPage } from "./ui/StatsPage";
 import { useHintConfirm } from "./ui/useHintConfirm";
 import { usePlayTimer } from "./ui/usePlayTimer";
@@ -94,8 +94,8 @@ export function App() {
     window.history.pushState(null, "", url);
     showView(next);
   };
-  // The clock only runs while the game is on screen.
-  usePlayTimer(game.status === GameStatus.Playing && view === View.Game, onElapsed);
+  // The clock only runs once the player has started and while the game is on screen.
+  usePlayTimer(isClockRunning(session) && view === View.Game, onElapsed);
 
   // Every finished game goes into the statistics: solved when the PuzzleSolved event arrives,
   // abandoned when a new game starts or the page closes after at least one move.

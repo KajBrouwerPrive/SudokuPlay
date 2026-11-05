@@ -52,7 +52,12 @@ export interface Session {
    */
   armedDigit: Digit | null;
   score: Score;
-  /** Play time; only advances while the game is being played and the page is visible. */
+  /**
+   * Whether the clock runs: from the first digit or note placed in the grid (a hint counts too),
+   * or the first digit picked on the number pad. Looking at the puzzle or selecting cells is free.
+   */
+  started: boolean;
+  /** Play time; only advances once started, while playing and with the page visible. */
   elapsedMs: number;
   /** Newest first. */
   log: LoggedEvent[];
@@ -88,6 +93,7 @@ export function createSession(puzzle: Puzzle): Session {
     notesMode: false,
     armedDigit: null,
     score: createScore(),
+    started: false,
     elapsedMs: 0,
     log: [],
     nextEventId: 1,
@@ -95,9 +101,17 @@ export function createSession(puzzle: Puzzle): Session {
   };
 }
 
+/** Moves that put something in the grid; they start the clock unless the engine rejects them. */
+const STARTING_ACTIONS: ReadonlySet<GameAction["type"]> = new Set([ActionType.Place, ActionType.ToggleNote, ActionType.Hint]);
+
+function startsClock(action: GameAction, events: readonly GameEvent[]): boolean {
+  return STARTING_ACTIONS.has(action.type) && events.some((event) => event.type !== GameEventType.MoveRejected);
+}
+
 function play(session: Session, action: GameAction): Session {
   const { state, events } = applyAction(session.game, action);
   if (events.length === 0) return state === session.game ? session : { ...session, game: state };
+  const started = session.started || startsClock(action, events);
   const logged = events.map((event, index) => ({ id: session.nextEventId + index, event })).reverse();
   const { score, awards } = scoreEvents(session.score, events, {
     difficulty: state.difficulty,
@@ -108,6 +122,7 @@ function play(session: Session, action: GameAction): Session {
     ...session,
     game: state,
     score,
+    started,
     log: [...logged, ...session.log].slice(0, EVENT_LOG_LIMIT),
     nextEventId: session.nextEventId + events.length,
     lastBatch: { id: session.nextEventId, events, awards },
@@ -162,14 +177,19 @@ export function sessionReducer(session: Session, action: SessionAction): Session
     case SessionActionType.PressCell:
       return pressCell(session, action.cell, action.secondary);
     case SessionActionType.ArmDigit:
-      return { ...session, armedDigit: session.armedDigit === action.digit ? null : action.digit };
+      return session.armedDigit === action.digit ? { ...session, armedDigit: null } : { ...session, armedDigit: action.digit, started: true };
     case SessionActionType.Command:
       return releaseIfDone(runCommand(session, action.command));
     case SessionActionType.NewGame:
       return { ...createSession(action.puzzle), notesMode: session.notesMode };
     case SessionActionType.Tick:
-      return session.game.status === GameStatus.Playing ? { ...session, elapsedMs: session.elapsedMs + action.elapsedMs } : session;
+      return isClockRunning(session) ? { ...session, elapsedMs: session.elapsedMs + action.elapsedMs } : session;
   }
+}
+
+/** Whether play time counts now: the player has started and the puzzle is not solved yet. */
+export function isClockRunning(session: Session): boolean {
+  return session.started && session.game.status === GameStatus.Playing;
 }
 
 /** Whether leaving this game now should count as a game played: a move was made and it is unsolved. */
