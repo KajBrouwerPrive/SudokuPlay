@@ -161,10 +161,35 @@ describe("sessionReducer", () => {
     });
 
     it("counts play time only while playing", () => {
-      let session = sessionReducer(createSession(PUZZLE), { type: SessionActionType.Tick, elapsedMs: 1500 });
+      let session = sessionReducer(arm(createSession(PUZZLE), 4), { type: SessionActionType.Tick, elapsedMs: 1500 });
       expect(session.elapsedMs).toBe(1500);
       session = { ...session, game: { ...session.game, status: GameStatus.Solved } };
       expect(sessionReducer(session, { type: SessionActionType.Tick, elapsedMs: 1000 }).elapsedMs).toBe(1500);
+    });
+
+    it("keeps the clock still until the player starts", () => {
+      const tick = (session: Session) => sessionReducer(session, { type: SessionActionType.Tick, elapsedMs: 1000 });
+      let idle = createSession(PUZZLE);
+      idle = command(select(idle, 2), { type: CommandType.Move, direction: Direction.Right });
+      expect(idle.started).toBe(false);
+      expect(tick(idle).elapsedMs).toBe(0);
+      // A move the engine rejects (a given cell) does not start it either.
+      expect(command(select(idle, 0), { type: CommandType.Input, digit: 4, asNote: false }).started).toBe(false);
+    });
+
+    it.each([
+      ["placing a digit", (session: Session) => command(select(session, 2), { type: CommandType.Input, digit: 4, asNote: false })],
+      ["placing a note", (session: Session) => command(select(session, 2), { type: CommandType.Input, digit: 4, asNote: true })],
+      ["picking a digit on the pad", (session: Session) => arm(session, 4)],
+      ["taking a hint", (session: Session) => command(session, { type: CommandType.Hint })],
+    ])("starts the clock on %s", (_, start) => {
+      const session = start(createSession(PUZZLE));
+      expect(session.started).toBe(true);
+      expect(sessionReducer(session, { type: SessionActionType.Tick, elapsedMs: 1000 }).elapsedMs).toBe(1000);
+    });
+
+    it("stops the clock again for a new game", () => {
+      expect(sessionReducer(arm(createSession(PUZZLE), 4), { type: SessionActionType.NewGame, puzzle: PUZZLE }).started).toBe(false);
     });
 
     it("gives a hint in the selected cell and halves the points", () => {

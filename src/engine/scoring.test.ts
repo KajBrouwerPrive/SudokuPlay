@@ -15,7 +15,8 @@ import {
   NOTES_BUDGET_PER_CELL,
   REFERENCE_OPEN_CELLS,
   SOLVE_BONUS,
-  TARGET_TIME_MS,
+  SPEED_HALF_LIFE_MS,
+  SPEED_TOP_TIME_MS,
   UNIT_BONUS,
   createScore,
   mistakePenalty,
@@ -28,9 +29,14 @@ import {
   type ScoreContext,
 } from "./scoring";
 
+/** So slow that the speed bonus rounds to zero, which keeps it out of the way of other tests. */
+const SLOW_MS = 60 * 60_000;
+const TOP_MS = SPEED_TOP_TIME_MS[Difficulty.Medium];
+const HALF_LIFE_MS = SPEED_HALF_LIFE_MS[Difficulty.Medium];
+
 const CONTEXT: ScoreContext = {
   difficulty: Difficulty.Medium,
-  elapsedMs: TARGET_TIME_MS[Difficulty.Medium],
+  elapsedMs: SLOW_MS,
   openCells: REFERENCE_OPEN_CELLS,
 };
 const BASE = BASE_POINTS[Difficulty.Medium];
@@ -84,10 +90,20 @@ describe("scoring", () => {
     expect(scoreEvents(createScore(), wrong(2), CONTEXT).score.points).toBe(-MISTAKE_PENALTY_STEP * BASE);
   });
 
-  it("weighs one mistake as at least half the speed bonus, and two heavier than all of it", () => {
+  it("weighs one mistake heavier than the whole speed bonus", () => {
     const lostByOneMistake = mistakePenalty(1, Difficulty.Medium) + FLAWLESS_BONUS * BASE;
-    expect(lostByOneMistake).toBeGreaterThanOrEqual((MAX_SPEED_BONUS * BASE) / 2);
-    expect(lostByOneMistake + mistakePenalty(2, Difficulty.Medium)).toBeGreaterThan(MAX_SPEED_BONUS * BASE);
+    expect(lostByOneMistake).toBeGreaterThan(MAX_SPEED_BONUS * BASE);
+  });
+
+  it("ranks flawless over speed over notes", () => {
+    expect(FLAWLESS_BONUS).toBeGreaterThan(MAX_SPEED_BONUS);
+    expect(MAX_SPEED_BONUS).toBeGreaterThan(MAX_NOTES_BONUS);
+  });
+
+  it("makes how well a puzzle is solved worth more than filling the grid", () => {
+    // Every digit at the maximum multiplier, every unit, every digit and the solve itself.
+    const gridPoints = REFERENCE_OPEN_CELLS * MAX_MULTIPLIER + ROWS.length * 3 * UNIT_BONUS + 9 * DIGIT_BONUS + SOLVE_BONUS;
+    expect(FLAWLESS_BONUS + MAX_SPEED_BONUS + MAX_NOTES_BONUS).toBeGreaterThan(gridPoints);
   });
 
   it("does not halve a score that is zero or below", () => {
@@ -118,12 +134,12 @@ describe("scoring", () => {
   });
 
   it("adds solve, flawless and speed bonuses at the end", () => {
-    const fast = { ...CONTEXT, elapsedMs: TARGET_TIME_MS[Difficulty.Medium] / 2 };
-    const { awards } = scoreEvents(createScore(), [{ type: GameEventType.PuzzleSolved, mistakes: 0 }], fast);
+    const oneHalfLife = { ...CONTEXT, elapsedMs: TOP_MS + HALF_LIFE_MS };
+    const { awards } = scoreEvents(createScore(), [{ type: GameEventType.PuzzleSolved, mistakes: 0 }], oneHalfLife);
     expect(awards.map(({ reason, points }) => [reason, points])).toEqual([
       [AwardReason.Solve, BASE * SOLVE_BONUS],
       [AwardReason.Flawless, BASE * FLAWLESS_BONUS],
-      [AwardReason.Speed, (BASE * MAX_SPEED_BONUS) / 2],
+      [AwardReason.Speed, Math.round((BASE * MAX_SPEED_BONUS) / 2)],
       [AwardReason.Notes, BASE * MAX_NOTES_BONUS],
     ]);
   });
@@ -151,20 +167,44 @@ describe("scoring", () => {
     }
   });
 
-  it("makes a faster clean solve always worth more than a slower one", () => {
-    let previous = Infinity;
-    for (let seconds = 0; seconds <= 900; seconds += 15) {
-      const bonus = speedBonus({ ...CONTEXT, elapsedMs: seconds * 1_000 });
-      expect(bonus).toBeLessThanOrEqual(previous);
-      if (previous !== Infinity && previous > 0) expect(bonus).toBeLessThan(previous);
-      previous = bonus;
-    }
-  });
+  describe("speed bonus", () => {
+    const bonusAt = (elapsedMs: number) => speedBonus({ ...CONTEXT, elapsedMs });
 
-  it("gives no speed bonus at or after the target time", () => {
-    expect(speedBonus(CONTEXT)).toBe(0);
-    expect(speedBonus({ ...CONTEXT, elapsedMs: CONTEXT.elapsedMs * 3 })).toBe(0);
-    expect(speedBonus({ ...CONTEXT, elapsedMs: 0 })).toBe(BASE * MAX_SPEED_BONUS);
+    it("pays the full bonus up to the top time, and nothing extra for going faster", () => {
+      expect(bonusAt(0)).toBe(BASE * MAX_SPEED_BONUS);
+      expect(bonusAt(TOP_MS)).toBe(BASE * MAX_SPEED_BONUS);
+    });
+
+    it("halves with every half-life slower than the top time", () => {
+      expect(bonusAt(TOP_MS + HALF_LIFE_MS)).toBe(Math.round((BASE * MAX_SPEED_BONUS) / 2));
+      expect(bonusAt(TOP_MS + 2 * HALF_LIFE_MS)).toBe(Math.round((BASE * MAX_SPEED_BONUS) / 4));
+    });
+
+    it("makes a faster solve worth more, and a second saved worth more the faster the solve", () => {
+      const stepMs = 15_000;
+      let previousGain = Infinity;
+      for (let elapsedMs = TOP_MS; elapsedMs <= TOP_MS + 3 * HALF_LIFE_MS; elapsedMs += stepMs) {
+        const gain = bonusAt(elapsedMs) - bonusAt(elapsedMs + stepMs);
+        expect(gain).toBeGreaterThan(0);
+        // Rounding to whole points can make two neighbouring steps differ by one.
+        expect(gain).toBeLessThanOrEqual(previousGain + 1);
+        previousGain = gain;
+      }
+      expect(bonusAt(TOP_MS) - bonusAt(TOP_MS + stepMs)).toBeGreaterThan(2 * (bonusAt(TOP_MS + 2 * HALF_LIFE_MS) - bonusAt(TOP_MS + 2 * HALF_LIFE_MS + stepMs)));
+    });
+
+    it("keeps a little bonus past the old target times, fading to zero for very slow solves", () => {
+      expect(bonusAt(15 * 60_000)).toBeGreaterThan(0);
+      expect(bonusAt(SLOW_MS)).toBe(0);
+    });
+
+    it("sets the top time and half-life to grow with the level", () => {
+      const levels = Object.values(Difficulty);
+      for (let index = 1; index < levels.length; index++) {
+        expect(SPEED_TOP_TIME_MS[levels[index]]).toBeGreaterThan(SPEED_TOP_TIME_MS[levels[index - 1]]);
+        expect(SPEED_HALF_LIFE_MS[levels[index]]).toBeGreaterThan(SPEED_HALF_LIFE_MS[levels[index - 1]]);
+      }
+    });
   });
 
   describe("notes bonus", () => {
@@ -200,17 +240,13 @@ describe("scoring", () => {
       expect(notesBonus(budget, wide)).toBe(Math.round((BASE * MAX_NOTES_BONUS) / 2));
     });
 
-    it("weighs a little less than speed", () => {
-      expect(MAX_NOTES_BONUS).toBeLessThan(MAX_SPEED_BONUS);
-      expect(MAX_NOTES_BONUS).toBeGreaterThanOrEqual(MAX_SPEED_BONUS / 2);
-    });
   });
 
   describe("score breakdown", () => {
     const solvedEvent: GameEvent = { type: GameEventType.PuzzleSolved, mistakes: 0 };
     const note: GameEvent = { type: GameEventType.NoteToggled, cell: 5, digit: 3, added: true };
     const playthrough: GameEvent[][] = [[correct(0)], [correct(1)], [note], [{ type: GameEventType.UnitCompleted, unit: ROWS[0] }]];
-    const fast = { ...CONTEXT, elapsedMs: TARGET_TIME_MS[Difficulty.Medium] / 3 };
+    const fast = { ...CONTEXT, elapsedMs: TOP_MS + HALF_LIFE_MS / 3 };
 
     it("keeps points per reason that add up to the total", () => {
       const score = run(createScore(), ...playthrough, wrong(7), [correct(8)]);
