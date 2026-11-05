@@ -9,8 +9,9 @@
 //
 // How well a puzzle is solved weighs more than solving it: the flawless, speed and notes bonuses
 // together are worth more than all points for filling the grid. Flawless weighs most, then speed,
-// then few pencil marks, with speed and notes close together. The first mistake costs more than the
-// whole speed bonus (penalty plus the lost flawless bonus).
+// then few pencil marks. The first mistake costs more than the whole speed bonus (penalty plus the
+// lost flawless bonus). The speed bonus is full up to a top time per level and halves with every
+// half-life slower, so a second saved is worth most for a fast solve.
 // The notes bonus shrinks with every distinct pencil mark placed. Marks count when placed and are
 // never taken back, so erasing or undoing them does not restore the bonus. Every cell, unit and
 // digit pays out once, so undo and replay cannot farm points, and like mistakes, penalties are
@@ -26,12 +27,21 @@ export const BASE_POINTS: Readonly<Record<Difficulty, number>> = {
   [Difficulty.Expert]: 40,
 };
 
-/** A solve faster than this earns a speed bonus, more the faster it is. */
-export const TARGET_TIME_MS: Readonly<Record<Difficulty, number>> = {
-  [Difficulty.Easy]: 8 * 60_000,
-  [Difficulty.Medium]: 15 * 60_000,
-  [Difficulty.Hard]: 25 * 60_000,
-  [Difficulty.Expert]: 40 * 60_000,
+/** A solve this fast or faster earns the full speed bonus: what a very good player manages. */
+export const SPEED_TOP_TIME_MS: Readonly<Record<Difficulty, number>> = {
+  [Difficulty.Easy]: 1.5 * 60_000,
+  [Difficulty.Medium]: 3 * 60_000,
+  [Difficulty.Hard]: 5 * 60_000,
+  [Difficulty.Expert]: 8 * 60_000,
+};
+
+/** Every this much slower than the top time halves the speed bonus, so a second saved is worth
+ * most close to the top time. Starting values; to be tuned to measured play times. */
+export const SPEED_HALF_LIFE_MS: Readonly<Record<Difficulty, number>> = {
+  [Difficulty.Easy]: 2.5 * 60_000,
+  [Difficulty.Medium]: 4 * 60_000,
+  [Difficulty.Hard]: 7 * 60_000,
+  [Difficulty.Expert]: 12 * 60_000,
 };
 
 /** Digit points are scaled as if every puzzle left this many cells open. */
@@ -46,11 +56,11 @@ export const MAX_MULTIPLIER = 2;
 export const UNIT_BONUS = 1;
 export const DIGIT_BONUS = 1;
 export const SOLVE_BONUS = 10;
-export const FLAWLESS_BONUS = 120;
-/** The speed bonus for an instant solve; it shrinks linearly to zero at the target time. */
-export const MAX_SPEED_BONUS = 80;
+export const FLAWLESS_BONUS = 110;
+/** The speed bonus at or below the top time; it halves with every half-life slower. */
+export const MAX_SPEED_BONUS = 105;
 /** The notes bonus for a solve without pencil marks; it shrinks linearly to zero at the budget. */
-export const MAX_NOTES_BONUS = 60;
+export const MAX_NOTES_BONUS = 75;
 /** Distinct pencil marks per open cell at which the notes bonus reaches zero. */
 export const NOTES_BUDGET_PER_CELL = 2;
 /** The n-th mistake costs n times this, in base points, up to the maximum per mistake. */
@@ -147,9 +157,15 @@ export function digitPoints(combo: number, context: ScoreContext): number {
 
 const unitKey = (unit: Unit) => `${unit.kind}-${unit.index}`;
 
+/** The share of the speed bonus a solve in this time earns: 1 up to the top time, then halving
+ * with every half-life. It never quite reaches zero; rounding takes care of very slow solves. */
+export function speedShare(elapsedMs: number, difficulty: Difficulty): number {
+  const overTopMs = Math.max(0, elapsedMs - SPEED_TOP_TIME_MS[difficulty]);
+  return 2 ** (-overTopMs / SPEED_HALF_LIFE_MS[difficulty]);
+}
+
 export function speedBonus(context: ScoreContext): number {
-  const share = 1 - context.elapsedMs / TARGET_TIME_MS[context.difficulty];
-  return Math.max(0, Math.round(MAX_SPEED_BONUS * BASE_POINTS[context.difficulty] * share));
+  return Math.round(MAX_SPEED_BONUS * BASE_POINTS[context.difficulty] * speedShare(context.elapsedMs, context.difficulty));
 }
 
 /** Identifies one pencil mark: a digit in a cell. */
@@ -199,7 +215,8 @@ export interface ScoreBreakdown {
   /** Distinct pencil marks at which the notes bonus reaches zero. */
   notesBudget: number;
   elapsedMs: number;
-  targetTimeMs: number;
+  topTimeMs: number;
+  halfLifeMs: number;
 }
 
 export function scoreBreakdown(score: Score, context: ScoreContext): ScoreBreakdown {
@@ -217,7 +234,8 @@ export function scoreBreakdown(score: Score, context: ScoreContext): ScoreBreakd
     noteMarks: score.noteMarks.length,
     notesBudget: notesBudget(context.openCells),
     elapsedMs: context.elapsedMs,
-    targetTimeMs: TARGET_TIME_MS[context.difficulty],
+    topTimeMs: SPEED_TOP_TIME_MS[context.difficulty],
+    halfLifeMs: SPEED_HALF_LIFE_MS[context.difficulty],
   };
 }
 
