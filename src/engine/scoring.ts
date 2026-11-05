@@ -10,8 +10,9 @@
 // How well a puzzle is solved weighs more than solving it: the flawless, speed and notes bonuses
 // together are worth more than all points for filling the grid. Flawless weighs most, then speed,
 // then few pencil marks. The first mistake costs more than the whole speed bonus (penalty plus the
-// lost flawless bonus). The speed bonus is full up to a top time per level and halves with every
-// half-life slower, so a second saved is worth most for a fast solve.
+// lost flawless bonus). The speed bonus is built around the average solve time per level: full up
+// to half the average, then halving with every half the average slower, so an average solve earns
+// half of it and a second saved is worth most for a fast solve.
 // The notes bonus shrinks with every distinct pencil mark placed. Marks count when placed and are
 // never taken back, so erasing or undoing them does not restore the bonus. Every cell, unit and
 // digit pays out once, so undo and replay cannot farm points, and like mistakes, penalties are
@@ -27,22 +28,27 @@ export const BASE_POINTS: Readonly<Record<Difficulty, number>> = {
   [Difficulty.Expert]: 40,
 };
 
-/** A solve this fast or faster earns the full speed bonus: what a very good player manages. */
-export const SPEED_TOP_TIME_MS: Readonly<Record<Difficulty, number>> = {
-  [Difficulty.Easy]: 1.5 * 60_000,
-  [Difficulty.Medium]: 3 * 60_000,
-  [Difficulty.Hard]: 5 * 60_000,
-  [Difficulty.Expert]: 8 * 60_000,
+/** How long an average solve takes per level; the speed bonus is built around it. Easy, medium and
+ * hard are measured; expert is an estimate until it is measured too. */
+export const AVERAGE_TIME_MS: Readonly<Record<Difficulty, number>> = {
+  [Difficulty.Easy]: 3 * 60_000,
+  [Difficulty.Medium]: 5 * 60_000,
+  [Difficulty.Hard]: 7 * 60_000,
+  [Difficulty.Expert]: 20 * 60_000,
 };
 
-/** Every this much slower than the top time halves the speed bonus, so a second saved is worth
- * most close to the top time. Starting values; to be tuned to measured play times. */
-export const SPEED_HALF_LIFE_MS: Readonly<Record<Difficulty, number>> = {
-  [Difficulty.Easy]: 2.5 * 60_000,
-  [Difficulty.Medium]: 4 * 60_000,
-  [Difficulty.Hard]: 7 * 60_000,
-  [Difficulty.Expert]: 12 * 60_000,
-};
+/** The top time as a share of the average time: this fast or faster earns the full speed bonus. */
+export const SPEED_TOP_TIME_SHARE = 0.5;
+/** The half-life as a share of the average time: every this much slower than the top time halves
+ * the speed bonus, so a second saved is worth most close to the top time. With both at a half, an
+ * average solve earns half the speed bonus. */
+export const SPEED_HALF_LIFE_SHARE = 0.5;
+
+const sharesOfAverage = (share: number) =>
+  Object.fromEntries(Object.entries(AVERAGE_TIME_MS).map(([level, averageMs]) => [level, averageMs * share])) as Record<Difficulty, number>;
+
+export const SPEED_TOP_TIME_MS: Readonly<Record<Difficulty, number>> = sharesOfAverage(SPEED_TOP_TIME_SHARE);
+export const SPEED_HALF_LIFE_MS: Readonly<Record<Difficulty, number>> = sharesOfAverage(SPEED_HALF_LIFE_SHARE);
 
 /** Digit points are scaled as if every puzzle left this many cells open. */
 export const REFERENCE_OPEN_CELLS = 45;
@@ -61,8 +67,15 @@ export const FLAWLESS_BONUS = 110;
 export const MAX_SPEED_BONUS = 105;
 /** The notes bonus for a solve without pencil marks; it shrinks linearly to zero at the budget. */
 export const MAX_NOTES_BONUS = 75;
-/** Distinct pencil marks per open cell at which the notes bonus reaches zero. */
-export const NOTES_BUDGET_PER_CELL = 2;
+/** Distinct pencil marks per open cell at which the notes bonus reaches zero: about what fully
+ * noting the puzzle takes, which grows with the level. Hard is measured (a fully noted hard puzzle
+ * took about 200 marks for 56 open cells); medium and expert are estimates until measured. */
+export const NOTES_BUDGET_PER_CELL: Readonly<Record<Difficulty, number>> = {
+  [Difficulty.Easy]: 2,
+  [Difficulty.Medium]: 3,
+  [Difficulty.Hard]: 3.6,
+  [Difficulty.Expert]: 4.5,
+};
 /** The n-th mistake costs n times this, in base points, up to the maximum per mistake. */
 export const MISTAKE_PENALTY_STEP = 10;
 export const MAX_MISTAKE_PENALTY = 30;
@@ -173,14 +186,14 @@ export function noteKey(cell: number, digit: Digit): number {
   return cell * DIGITS.length + (digit - 1);
 }
 
-/** Distinct pencil marks at which the notes bonus reaches zero. */
-export function notesBudget(openCells: number): number {
-  return NOTES_BUDGET_PER_CELL * Math.max(1, openCells);
+/** Distinct pencil marks at which the notes bonus reaches zero, for this level and puzzle. */
+export function notesBudget(openCells: number, difficulty: Difficulty): number {
+  return Math.round(NOTES_BUDGET_PER_CELL[difficulty] * Math.max(1, openCells));
 }
 
 /** The notes bonus for this many distinct pencil marks, scaled to the puzzle's open cells. */
 export function notesBonus(noteMarks: number, context: ScoreContext): number {
-  const budget = notesBudget(context.openCells);
+  const budget = notesBudget(context.openCells, context.difficulty);
   const share = 1 - noteMarks / budget;
   return Math.max(0, Math.round(MAX_NOTES_BONUS * BASE_POINTS[context.difficulty] * share));
 }
@@ -215,6 +228,7 @@ export interface ScoreBreakdown {
   /** Distinct pencil marks at which the notes bonus reaches zero. */
   notesBudget: number;
   elapsedMs: number;
+  averageTimeMs: number;
   topTimeMs: number;
   halfLifeMs: number;
 }
@@ -232,8 +246,9 @@ export function scoreBreakdown(score: Score, context: ScoreContext): ScoreBreakd
     nextMistakePenalty: mistakePenalty(score.mistakes + 1, context.difficulty),
     flawlessPossible: score.mistakes === 0 && score.hints === 0,
     noteMarks: score.noteMarks.length,
-    notesBudget: notesBudget(context.openCells),
+    notesBudget: notesBudget(context.openCells, context.difficulty),
     elapsedMs: context.elapsedMs,
+    averageTimeMs: AVERAGE_TIME_MS[context.difficulty],
     topTimeMs: SPEED_TOP_TIME_MS[context.difficulty],
     halfLifeMs: SPEED_HALF_LIFE_MS[context.difficulty],
   };

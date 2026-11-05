@@ -15,6 +15,7 @@ import {
   NOTES_BUDGET_PER_CELL,
   REFERENCE_OPEN_CELLS,
   SOLVE_BONUS,
+  AVERAGE_TIME_MS,
   SPEED_HALF_LIFE_MS,
   SPEED_TOP_TIME_MS,
   UNIT_BONUS,
@@ -22,6 +23,7 @@ import {
   mistakePenalty,
   multiplierFor,
   notesBonus,
+  notesBudget,
   scoreBreakdown,
   scoreEvents,
   speedBonus,
@@ -175,6 +177,13 @@ describe("scoring", () => {
       expect(bonusAt(TOP_MS)).toBe(BASE * MAX_SPEED_BONUS);
     });
 
+    it("pays an average solve half the speed bonus", () => {
+      for (const difficulty of Object.values(Difficulty)) {
+        const bonus = speedBonus({ ...CONTEXT, difficulty, elapsedMs: AVERAGE_TIME_MS[difficulty] });
+        expect(bonus).toBe(Math.round((BASE_POINTS[difficulty] * MAX_SPEED_BONUS) / 2));
+      }
+    });
+
     it("halves with every half-life slower than the top time", () => {
       expect(bonusAt(TOP_MS + HALF_LIFE_MS)).toBe(Math.round((BASE * MAX_SPEED_BONUS) / 2));
       expect(bonusAt(TOP_MS + 2 * HALF_LIFE_MS)).toBe(Math.round((BASE * MAX_SPEED_BONUS) / 4));
@@ -211,7 +220,7 @@ describe("scoring", () => {
     const note = (cell: number, digit: Digit, added = true): GameEvent => ({ type: GameEventType.NoteToggled, cell, digit, added });
     const solved: GameEvent = { type: GameEventType.PuzzleSolved, mistakes: 0 };
     const notesAward = (score: Score) => scoreEvents(score, [solved], CONTEXT).awards.find((award) => award.reason === AwardReason.Notes)?.points ?? 0;
-    const budget = NOTES_BUDGET_PER_CELL * REFERENCE_OPEN_CELLS;
+    const budget = notesBudget(REFERENCE_OPEN_CELLS, CONTEXT.difficulty);
 
     it("pays the full bonus for a solve without pencil marks", () => {
       expect(notesAward(createScore())).toBe(BASE * MAX_NOTES_BONUS);
@@ -238,6 +247,15 @@ describe("scoring", () => {
     it("scales the budget to the puzzle's open cells", () => {
       const wide = { ...CONTEXT, openCells: REFERENCE_OPEN_CELLS * 2 };
       expect(notesBonus(budget, wide)).toBe(Math.round((BASE * MAX_NOTES_BONUS) / 2));
+    });
+
+    it("allows more marks on harder levels", () => {
+      const levels = Object.values(Difficulty);
+      for (let index = 1; index < levels.length; index++) {
+        expect(NOTES_BUDGET_PER_CELL[levels[index]]).toBeGreaterThan(NOTES_BUDGET_PER_CELL[levels[index - 1]]);
+      }
+      // A fully noted hard puzzle: about 200 marks for 56 open cells.
+      expect(notesBudget(56, Difficulty.Hard)).toBeGreaterThanOrEqual(200);
     });
 
   });
