@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Award, GameEvent } from "../engine";
 import type { EventBatch } from "../ui/session";
-import { choreograph } from "./choreograph";
+import { choreograph, type Cue } from "./choreograph";
 import { CuePlayer } from "./player";
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -20,7 +20,8 @@ export function usePrefersReducedMotion(): boolean {
 /**
  * Plays the animations for each new event batch. Runs in a layout effect, so a placed digit
  * starts at its first keyframe instead of flashing at full size for one frame.
- * Returns the refs to attach, `playEvents` for previewing effects without changing the game, and
+ * Returns the refs to attach, `playEvents` for previewing effects without changing the game,
+ * `playCues` for UI-only motion that no game event drives (arming a digit), and
  * `stopAll` to end every running effect (call it before starting a new game) and `setTimeScale`
  * for slow motion while tuning.
  */
@@ -45,6 +46,8 @@ export function useAnimations(batch: EventBatch | null, reducedMotion: boolean) 
     [player, reducedMotion],
   );
 
+  const playCues = useCallback((cues: Cue[]) => player()?.play(cues, reducedMotion), [player, reducedMotion]);
+
   useLayoutEffect(() => {
     // Batch ids restart with each game, so forget what played.
     if (!batch) {
@@ -67,5 +70,5 @@ export function useAnimations(batch: EventBatch | null, reducedMotion: boolean) 
     [player],
   );
 
-  return { rootRef, fxLayerRef, playEvents, stopAll, setTimeScale };
+  return { rootRef, fxLayerRef, playEvents, playCues, stopAll, setTimeScale };
 }

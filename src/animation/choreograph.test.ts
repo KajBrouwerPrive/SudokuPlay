@@ -9,11 +9,13 @@ import {
   FINALE_DELAY_MS,
   LANDING_DELAY_MS,
   NOTE_STAGGER_MS,
+  SPOTLIGHT_STAGGER_MS,
   TargetKind,
   AWARD_STAGGER_MS,
   HINT_SPARKLE_LEAD_MS,
   WAVE_STAGGER_MS,
   choreograph,
+  choreographArmedDigit,
   choreographAwards,
   distance,
   pointsLabel,
@@ -185,5 +187,22 @@ describe("choreograph", () => {
     expect(distance(0, 0)).toBe(0);
     expect(distance(0, 10)).toBe(1);
     expect(distance(0, 80)).toBe(8);
+  });
+
+  it("pops every copy of an armed digit in reading order, one after another", () => {
+    const values = new Uint8Array(81);
+    values[70] = 8;
+    values[3] = 8;
+    values[40] = 8;
+    values[41] = 2;
+    expect(choreographArmedDigit(values, 8)).toEqual([
+      { effect: Effect.DigitSpotlight, target: { kind: TargetKind.Cell, cell: 3 }, delayMs: 0 },
+      { effect: Effect.DigitSpotlight, target: { kind: TargetKind.Cell, cell: 40 }, delayMs: SPOTLIGHT_STAGGER_MS },
+      { effect: Effect.DigitSpotlight, target: { kind: TargetKind.Cell, cell: 70 }, delayMs: 2 * SPOTLIGHT_STAGGER_MS },
+    ]);
+  });
+
+  it("has nothing to pop for a digit that is not on the board yet", () => {
+    expect(choreographArmedDigit(new Uint8Array(81), 4)).toEqual([]);
   });
 });

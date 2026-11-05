@@ -44,6 +44,8 @@ export const WAVE_STAGGER_MS = 40;
 /** The digit dance starts once the waves are well under way; one copy hops at a time. */
 export const DANCE_DELAY_MS = 420;
 export const DANCE_STAGGER_MS = 70;
+/** Arming a digit pops its copies one after another, in reading order. */
+export const SPOTLIGHT_STAGGER_MS = 25;
 /** The finale waits for the digit dance, which the last placement always triggers. */
 export const FINALE_DELAY_MS = 1100;
 /** The flip cascade runs one diagonal (row + column) at a time, from the top left. */
@@ -86,6 +88,18 @@ export function choreographAwards(awards: readonly Award[]): Cue[] {
   });
   if (awards.some((award) => award.reason === AwardReason.Hint)) cues.push({ effect: Effect.ScoreSquash, target: scoreTarget, delayMs: HINT_SPARKLE_LEAD_MS });
   else if (awards.some((award) => award.points > 0)) cues.push({ effect: Effect.ScoreBump, target: scoreTarget, delayMs: LANDING_DELAY_MS });
+  return cues;
+}
+
+/**
+ * Cues for arming a digit on the number pad: every cell holding it pops, staggered in reading
+ * order, so the eye sweeps over all copies. Not a game event, so it has its own entry point.
+ */
+export function choreographArmedDigit(values: ArrayLike<number>, digit: Digit): Cue[] {
+  const cues: Cue[] = [];
+  for (let cell = 0; cell < CELL_COUNT; cell++) {
+    if (values[cell] === digit) cues.push({ effect: Effect.DigitSpotlight, target: cellTarget(cell), delayMs: SPOTLIGHT_STAGGER_MS * cues.length });
+  }
   return cues;
 }
 

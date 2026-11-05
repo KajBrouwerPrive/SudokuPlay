@@ -38,6 +38,8 @@ export const Effect = {
   Wave: "wave",
   /** A completed digit: every copy hops in turn. */
   DigitDance: "digitDance",
+  /** A digit armed on the pad: every copy on the board pops in turn, so the eye finds them all. */
+  DigitSpotlight: "digitSpotlight",
   /** The pad button of a completed digit squashes before it settles as done. */
   PadComplete: "padComplete",
   /** The solved board: every cell flips along the diagonal. */
@@ -280,6 +282,17 @@ export const EFFECTS: Readonly<Record<Effect, EffectSpec>> = {
       { transform: "translateY(-10px) rotate(-12deg) scale(1.25)", offset: 0.35 },
       { transform: "translateY(0) rotate(8deg) scale(0.95)", offset: 0.65 },
       { transform: "translateY(0) rotate(0deg) scale(1)" },
+    ],
+    reducedKeyframes: blink,
+  },
+  [Effect.DigitSpotlight]: {
+    part: EffectPart.Cell,
+    durationMs: 260,
+    easing: EASE_OUT,
+    keyframes: [
+      { transform: "scale(1)" },
+      { transform: "scale(1.14)", offset: 0.4 },
+      { transform: "scale(1)" },
     ],
     reducedKeyframes: blink,
   },

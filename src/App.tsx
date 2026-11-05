@@ -1,7 +1,7 @@
 // The game screen and the statistics page. Rules live in the engine, motion in src/animation;
 // this only wires them together.
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { Control } from "./animation/choreograph";
+import { Control, choreographArmedDigit } from "./animation/choreograph";
 import { useAnimations, usePrefersReducedMotion } from "./animation/useAnimations";
 import { DIFFICULTIES, Difficulty, GameEventType, GameStatus, countEmpty, createPuzzle, hintCost, multiplierFor, remainingByDigit, scoreBreakdown, type Digit } from "./engine";
 import { GameOutcome } from "./stats/stats";
@@ -61,8 +61,18 @@ export function App() {
   const [session, dispatch] = useReducer(sessionReducer, undefined, () => createSession(createPuzzle(initialPuzzleOptions())));
   const { game, selected, notesMode, armedDigit, score, elapsedMs, log, lastBatch } = session;
   const reducedMotion = usePrefersReducedMotion();
-  const { rootRef, fxLayerRef, playEvents, stopAll, setTimeScale } = useAnimations(lastBatch, reducedMotion);
+  const { rootRef, fxLayerRef, playEvents, playCues, stopAll, setTimeScale } = useAnimations(lastBatch, reducedMotion);
   const cells = useMemo(() => cellViews(game, selected, armedDigit), [game, selected, armedDigit]);
+
+  // Arming a digit pops all its copies once; later placements do not replay it, so it reads the
+  // board as it was at the moment of arming.
+  const valuesRef = useRef(game.values);
+  useEffect(() => {
+    valuesRef.current = game.values;
+  }, [game.values]);
+  useEffect(() => {
+    if (armedDigit !== null) playCues(choreographArmedDigit(valuesRef.current, armedDigit));
+  }, [armedDigit, playCues]);
   const remaining = useMemo(() => remainingByDigit(game), [game]);
 
   useEffect(() => rememberInUrl(game.difficulty, game.seed), [game.difficulty, game.seed]);

@@ -74,11 +74,13 @@
   background: var(--peer);
 }
 
-/* An outline, not a shadow: animations use box-shadow and would hide it while they play. */
+/* Every copy of the armed (or selected) digit becomes a filled accent tile with its own darker
+   edge, so all copies jump out even on a nearly full board. Givens and entered digits look alike
+   here on purpose: the question is where the digit is, not who put it there. */
 .cell--same-digit {
   background: var(--same-digit);
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  border-bottom-color: var(--same-digit-edge);
+  color: var(--same-digit-text);
 }
 
 .cell--conflict {
@@ -141,6 +143,8 @@
   border: 3px solid var(--accent);
   border-radius: var(--radius-tile);
   background: var(--accent-glow);
+  /* A tile-coloured inner line keeps the cursor visible on a filled same-digit tile. */
+  box-shadow: inset 0 0 0 2px var(--tile);
   pointer-events: none;
   z-index: 1;
   transition:
