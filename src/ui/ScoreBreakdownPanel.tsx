@@ -9,7 +9,7 @@ const REASON_LABELS: Readonly<Record<AwardReason, string>> = {
   [AwardReason.Unit]: "Rij/kolom/blok",
   [AwardReason.DigitCompleted]: "Cijfer compleet",
   [AwardReason.Mistake]: "Fouten",
-  [AwardReason.Hint]: "Hints (÷2)",
+  [AwardReason.Hint]: "Hints",
   [AwardReason.Solve]: "Opgelost",
   [AwardReason.Flawless]: "Foutloos",
   [AwardReason.Speed]: "Snelheid",
@@ -82,9 +82,12 @@ export function ScoreBreakdownPanel({ breakdown, solved }: ScoreBreakdownPanelPr
         <dd>+{formatPoints(breakdown.nextDigitPoints)}</dd>
         <dt>Volgende fout</dt>
         <dd className="score-breakdown__amount--negative">
-          −{formatPoints(breakdown.nextMistakePenalty)}
-          {breakdown.flawlessPossible && " + foutloos-bonus"}
+          −{formatPoints(breakdown.nextMistakeCost)}
         </dd>
+        <dt>Volgende hint</dt>
+        <dd className="score-breakdown__amount--negative">−{formatPoints(breakdown.nextHintCost)}</dd>
+        <dt>Foutloos-bonus over</dt>
+        <dd>{formatPoints(breakdown.flawlessRemaining)}</dd>
         <dt>Speeltijd</dt>
         <dd>{formatDuration(breakdown.elapsedMs)}</dd>
         <dt>Volle snelheidsbonus tot</dt>

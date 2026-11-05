@@ -46,12 +46,12 @@ export const Effect = {
   Confetti: "confetti",
   /** The solved card springs in. */
   CardIn: "cardIn",
-  /** Points float up from where they were earned ("+15") or lost ("−15", "÷2"). */
+  /** Points float up from where they were earned ("+15") or lost ("−15"). */
   ScorePop: "scorePop",
   /** The score counter swells when points arrive. */
   ScoreBump: "scoreBump",
-  /** The score counter squashes when a hint halves it. */
-  ScoreHalve: "scoreHalve",
+  /** The score counter squashes when a hint costs points. */
+  ScoreSquash: "scoreSquash",
   /** Stars twinkle around a cell a hint filled. */
   HintSparkle: "hintSparkle",
   /** A wrong digit's cell flashes red twice, clash or not. */
@@ -337,7 +337,7 @@ export const EFFECTS: Readonly<Record<Effect, EffectSpec>> = {
     keyframes: [{ transform: "scale(1)" }, { transform: "scale(1.25)", offset: 0.35 }, { transform: "scale(1)" }],
     reducedKeyframes: blink,
   },
-  [Effect.ScoreHalve]: {
+  [Effect.ScoreSquash]: {
     part: EffectPart.Control,
     durationMs: 520,
     easing: EASE_IN_OUT,

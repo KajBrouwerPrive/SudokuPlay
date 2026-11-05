@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Control } from "./animation/choreograph";
 import { useAnimations, usePrefersReducedMotion } from "./animation/useAnimations";
-import { DIFFICULTIES, Difficulty, GameEventType, GameStatus, countEmpty, createPuzzle, multiplierFor, remainingByDigit, scoreBreakdown, type Digit } from "./engine";
+import { DIFFICULTIES, Difficulty, GameEventType, GameStatus, countEmpty, createPuzzle, hintCost, multiplierFor, remainingByDigit, scoreBreakdown, type Digit } from "./engine";
 import { GameOutcome } from "./stats/stats";
 import { loadStats, recordGame } from "./stats/storage";
 import { Board } from "./ui/Board";
@@ -220,6 +220,7 @@ export function App() {
           onRedo={() => run({ type: CommandType.Redo })}
           onToggleNotes={() => run({ type: CommandType.ToggleNotesMode })}
           hintConfirming={hint.confirming}
+          hintCostLabel={`−${formatPoints(hintCost(score, game.difficulty))}`}
           onHint={hint.request}
         />
 

@@ -22,6 +22,11 @@ import {
   createScore,
   mistakePenalty,
   multiplierFor,
+  HINT_COST_SHARE,
+  flawlessBonus,
+  hintCost,
+  hintPenalty,
+  mistakeCost,
   notesBonus,
   notesBudget,
   scoreBreakdown,
@@ -108,20 +113,38 @@ describe("scoring", () => {
     expect(FLAWLESS_BONUS + MAX_SPEED_BONUS + MAX_NOTES_BONUS).toBeGreaterThan(gridPoints);
   });
 
-  it("does not halve a score that is zero or below", () => {
-    const negative = { ...createScore(), points: -80 };
-    const { score, awards } = scoreEvents(negative, [{ type: GameEventType.HintUsed, cell: 5, digit: 3, hints: 1 }], CONTEXT);
-    expect(awards).toEqual([]);
-    expect(score).toMatchObject({ points: -80, hints: 1 });
-  });
+  describe("hints", () => {
+    const hintEvent = (hints: number): GameEvent => ({ type: GameEventType.HintUsed, cell: 5, digit: 3, hints });
 
-  it("halves the points on a hint, and the hinted digit earns nothing", () => {
-    const before = { ...createScore(), points: 101, combo: 4 };
-    const { score, awards } = scoreEvents(before, [{ type: GameEventType.HintUsed, cell: 5, digit: 3, hints: 1 }, correct(5, 3)], CONTEXT);
-    expect(awards).toEqual([{ reason: AwardReason.Hint, points: -51, cell: 5 }]);
-    expect(score).toMatchObject({ points: 50, combo: 0, hints: 1 });
-    // The hinted cell never pays out later either.
-    expect(scoreEvents(score, [correct(5, 3)], CONTEXT).awards).toEqual([]);
+    it("costs a fixed penalty whenever it is taken, resets the combo, and the hinted digit earns nothing", () => {
+      for (const points of [-80, 0, 101, 5_000]) {
+        const before = { ...createScore(), points, combo: 4 };
+        const { score, awards } = scoreEvents(before, [hintEvent(1), correct(5, 3)], CONTEXT);
+        expect(awards).toEqual([{ reason: AwardReason.Hint, points: -hintPenalty(0, Difficulty.Medium), cell: 5 }]);
+        expect(score).toMatchObject({ points: points - hintPenalty(0, Difficulty.Medium), combo: 0, hints: 1 });
+        // The hinted cell never pays out later either.
+        expect(scoreEvents(score, [correct(5, 3)], CONTEXT).awards).toEqual([]);
+      }
+    });
+
+    it("costs three quarters of the next mistake, so it is cheaper than a mistake in every situation", () => {
+      for (let mistakes = 0; mistakes < 4; mistakes++) {
+        expect(hintPenalty(mistakes, Difficulty.Medium)).toBe(Math.round(mistakePenalty(mistakes + 1, Difficulty.Medium) * HINT_COST_SHARE));
+        for (let hints = 0; hints < 4; hints++) {
+          const score = { ...createScore(), mistakes, hints };
+          expect(hintCost(score, Difficulty.Medium)).toBeLessThan(mistakeCost(score, Difficulty.Medium));
+        }
+      }
+      const fresh = createScore();
+      expect(hintCost(fresh, Difficulty.Medium)).toBe(Math.round(mistakeCost(fresh, Difficulty.Medium) * HINT_COST_SHARE));
+    });
+
+    it("takes a share of the flawless bonus per hint, all of it after two, and all of it after a mistake", () => {
+      expect(flawlessBonus(0, 0, Difficulty.Medium)).toBe(BASE * FLAWLESS_BONUS);
+      expect(flawlessBonus(0, 1, Difficulty.Medium)).toBe(Math.round(BASE * FLAWLESS_BONUS * (1 - HINT_COST_SHARE)));
+      expect(flawlessBonus(0, 2, Difficulty.Medium)).toBe(0);
+      expect(flawlessBonus(1, 0, Difficulty.Medium)).toBe(0);
+    });
   });
 
   it("pays unit and digit bonuses once each", () => {
@@ -146,11 +169,12 @@ describe("scoring", () => {
     ]);
   });
 
-  it("skips the flawless bonus after a mistake or a hint", () => {
+  it("skips the flawless bonus after a mistake, and pays a quarter of it after one hint", () => {
     const solvedWithMistake = scoreEvents(createScore(), [{ type: GameEventType.PuzzleSolved, mistakes: 1 }], CONTEXT);
     expect(solvedWithMistake.awards.map((award) => award.reason)).toEqual([AwardReason.Solve, AwardReason.Notes]);
     const hinted = { ...createScore(), hints: 1 };
-    expect(scoreEvents(hinted, [{ type: GameEventType.PuzzleSolved, mistakes: 0 }], CONTEXT).awards.map((award) => award.reason)).toEqual([AwardReason.Solve, AwardReason.Notes]);
+    const flawless = scoreEvents(hinted, [{ type: GameEventType.PuzzleSolved, mistakes: 0 }], CONTEXT).awards.find((award) => award.reason === AwardReason.Flawless);
+    expect(flawless?.points).toBe(flawlessBonus(0, 1, Difficulty.Medium));
   });
 
   it("pays every puzzle of a level about the same for the same clean play, however many cells it leaves open", () => {
@@ -286,10 +310,16 @@ describe("scoring", () => {
 
     it("shows the next digit, the next mistake and what is still in reach", () => {
       const clean = scoreBreakdown(run(createScore(), [correct(0)]), CONTEXT);
-      expect(clean).toMatchObject({ combo: 1, nextMistakePenalty: mistakePenalty(1, Difficulty.Medium), flawlessPossible: true, noteMarks: 0 });
+      expect(clean).toMatchObject({
+        combo: 1,
+        nextMistakePenalty: mistakePenalty(1, Difficulty.Medium),
+        nextMistakeCost: mistakePenalty(1, Difficulty.Medium) + BASE * FLAWLESS_BONUS,
+        flawlessRemaining: BASE * FLAWLESS_BONUS,
+        noteMarks: 0,
+      });
       expect(clean.nextDigitPoints).toBe(scoreEvents(run(createScore(), [correct(0)]), [correct(1)], CONTEXT).awards[0].points);
       const afterMistake = scoreBreakdown(run(createScore(), wrong(0)), CONTEXT);
-      expect(afterMistake).toMatchObject({ flawlessPossible: false, nextMistakePenalty: mistakePenalty(2, Difficulty.Medium) });
+      expect(afterMistake).toMatchObject({ flawlessRemaining: 0, nextMistakePenalty: mistakePenalty(2, Difficulty.Medium), nextHintCost: hintPenalty(1, Difficulty.Medium) });
       expect(afterMistake.projectedSolve.map((award) => award.reason)).not.toContain(AwardReason.Flawless);
     });
   });
