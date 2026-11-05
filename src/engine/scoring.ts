@@ -86,6 +86,8 @@ export interface Score {
   paidCells: readonly number[];
   paidUnits: readonly string[];
   paidDigits: readonly Digit[];
+  /** Points so far per reason, for the developer's score breakdown; they add up to `points`. */
+  pointsByReason: Readonly<Record<AwardReason, number>>;
   /** Every distinct pencil mark ever placed, as `noteKey(cell, digit)`. */
   noteMarks: readonly number[];
   /** The rounding the digit points so far left over, carried into the next digit so scaled
@@ -101,8 +103,22 @@ export interface ScoreContext {
   openCells: number;
 }
 
+const zeroByReason = (): Record<AwardReason, number> =>
+  Object.fromEntries(Object.values(AwardReason).map((reason) => [reason, 0])) as Record<AwardReason, number>;
+
 export function createScore(): Score {
-  return { points: 0, combo: 0, mistakes: 0, hints: 0, paidCells: [], paidUnits: [], paidDigits: [], noteMarks: [], digitRounding: 0 };
+  return {
+    points: 0,
+    combo: 0,
+    mistakes: 0,
+    hints: 0,
+    pointsByReason: zeroByReason(),
+    paidCells: [],
+    paidUnits: [],
+    paidDigits: [],
+    noteMarks: [],
+    digitRounding: 0,
+  };
 }
 
 /** The multiplier the next correct digit earns with this combo already standing. */
@@ -139,11 +155,68 @@ export function noteKey(cell: number, digit: Digit): number {
   return cell * DIGITS.length + (digit - 1);
 }
 
+/** Distinct pencil marks at which the notes bonus reaches zero. */
+export function notesBudget(openCells: number): number {
+  return NOTES_BUDGET_PER_CELL * Math.max(1, openCells);
+}
+
 /** The notes bonus for this many distinct pencil marks, scaled to the puzzle's open cells. */
 export function notesBonus(noteMarks: number, context: ScoreContext): number {
-  const budget = NOTES_BUDGET_PER_CELL * Math.max(1, context.openCells);
+  const budget = notesBudget(context.openCells);
   const share = 1 - noteMarks / budget;
   return Math.max(0, Math.round(MAX_NOTES_BONUS * BASE_POINTS[context.difficulty] * share));
+}
+
+/** The awards a solve adds on top of the points so far, in the order they are paid. */
+export function solveAwards(score: Score, mistakes: number, context: ScoreContext): Award[] {
+  const base = BASE_POINTS[context.difficulty];
+  const awards: Award[] = [{ reason: AwardReason.Solve, points: base * SOLVE_BONUS, cell: null }];
+  if (mistakes === 0 && score.hints === 0) awards.push({ reason: AwardReason.Flawless, points: base * FLAWLESS_BONUS, cell: null });
+  awards.push({ reason: AwardReason.Speed, points: speedBonus(context), cell: null });
+  awards.push({ reason: AwardReason.Notes, points: notesBonus(score.noteMarks.length, context), cell: null });
+  return awards.filter((award) => award.points !== 0);
+}
+
+/** Where the score stands and what solving right now would add: for the developer panel. */
+export interface ScoreBreakdown {
+  points: number;
+  pointsByReason: Readonly<Record<AwardReason, number>>;
+  /** What a solve at this moment would add, per reason. */
+  projectedSolve: readonly Award[];
+  /** `points` plus the projected solve awards. */
+  projectedTotal: number;
+  combo: number;
+  multiplier: number;
+  /** What the next correct digit earns, rounded. */
+  nextDigitPoints: number;
+  /** What the next mistake costs, as a positive number. */
+  nextMistakePenalty: number;
+  /** Whether the flawless bonus is still within reach. */
+  flawlessPossible: boolean;
+  noteMarks: number;
+  /** Distinct pencil marks at which the notes bonus reaches zero. */
+  notesBudget: number;
+  elapsedMs: number;
+  targetTimeMs: number;
+}
+
+export function scoreBreakdown(score: Score, context: ScoreContext): ScoreBreakdown {
+  const projectedSolve = solveAwards(score, score.mistakes, context);
+  return {
+    points: score.points,
+    pointsByReason: score.pointsByReason,
+    projectedSolve,
+    projectedTotal: score.points + projectedSolve.reduce((sum, award) => sum + award.points, 0),
+    combo: score.combo,
+    multiplier: multiplierFor(score.combo, context.openCells),
+    nextDigitPoints: Math.round(digitPoints(score.combo, context) + score.digitRounding),
+    nextMistakePenalty: mistakePenalty(score.mistakes + 1, context.difficulty),
+    flawlessPossible: score.mistakes === 0 && score.hints === 0,
+    noteMarks: score.noteMarks.length,
+    notesBudget: notesBudget(context.openCells),
+    elapsedMs: context.elapsedMs,
+    targetTimeMs: TARGET_TIME_MS[context.difficulty],
+  };
 }
 
 export function scoreEvents(score: Score, events: readonly GameEvent[], context: ScoreContext): { score: Score; awards: Award[] } {
@@ -155,7 +228,11 @@ export function scoreEvents(score: Score, events: readonly GameEvent[], context:
   const award = (reason: AwardReason, points: number, cell: number | null = null) => {
     if (points === 0) return;
     awards.push({ reason, points, cell });
-    next = { ...next, points: next.points + points };
+    next = {
+      ...next,
+      points: next.points + points,
+      pointsByReason: { ...next.pointsByReason, [reason]: next.pointsByReason[reason] + points },
+    };
   };
 
   for (const event of events) {
@@ -194,10 +271,7 @@ export function scoreEvents(score: Score, events: readonly GameEvent[], context:
         award(AwardReason.DigitCompleted, base * DIGIT_BONUS);
         break;
       case GameEventType.PuzzleSolved:
-        award(AwardReason.Solve, base * SOLVE_BONUS);
-        if (event.mistakes === 0 && next.hints === 0) award(AwardReason.Flawless, base * FLAWLESS_BONUS);
-        award(AwardReason.Speed, speedBonus(context));
-        award(AwardReason.Notes, notesBonus(next.noteMarks.length, context));
+        for (const solveAward of solveAwards(next, event.mistakes, context)) award(solveAward.reason, solveAward.points);
         break;
       default:
         break;

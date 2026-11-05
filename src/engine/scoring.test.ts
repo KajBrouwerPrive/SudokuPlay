@@ -21,6 +21,7 @@ import {
   mistakePenalty,
   multiplierFor,
   notesBonus,
+  scoreBreakdown,
   scoreEvents,
   speedBonus,
   type Score,
@@ -202,6 +203,40 @@ describe("scoring", () => {
     it("weighs a little less than speed", () => {
       expect(MAX_NOTES_BONUS).toBeLessThan(MAX_SPEED_BONUS);
       expect(MAX_NOTES_BONUS).toBeGreaterThanOrEqual(MAX_SPEED_BONUS / 2);
+    });
+  });
+
+  describe("score breakdown", () => {
+    const solvedEvent: GameEvent = { type: GameEventType.PuzzleSolved, mistakes: 0 };
+    const note: GameEvent = { type: GameEventType.NoteToggled, cell: 5, digit: 3, added: true };
+    const playthrough: GameEvent[][] = [[correct(0)], [correct(1)], [note], [{ type: GameEventType.UnitCompleted, unit: ROWS[0] }]];
+    const fast = { ...CONTEXT, elapsedMs: TARGET_TIME_MS[Difficulty.Medium] / 3 };
+
+    it("keeps points per reason that add up to the total", () => {
+      const score = run(createScore(), ...playthrough, wrong(7), [correct(8)]);
+      const sum = Object.values(score.pointsByReason).reduce((total, points) => total + points, 0);
+      expect(sum).toBe(score.points);
+      expect(score.pointsByReason[AwardReason.Mistake]).toBe(-mistakePenalty(1, Difficulty.Medium));
+      expect(score.pointsByReason[AwardReason.Unit]).toBe(BASE * UNIT_BONUS);
+    });
+
+    it("projects exactly what solving now would pay", () => {
+      for (const extra of [[], wrong(9)]) {
+        const score = run(createScore(), ...playthrough, extra);
+        const breakdown = scoreBreakdown(score, fast);
+        const solved = scoreEvents(score, [{ ...solvedEvent, mistakes: score.mistakes }], fast);
+        expect(breakdown.projectedTotal).toBe(solved.score.points);
+        expect(breakdown.projectedSolve).toEqual(solved.awards);
+      }
+    });
+
+    it("shows the next digit, the next mistake and what is still in reach", () => {
+      const clean = scoreBreakdown(run(createScore(), [correct(0)]), CONTEXT);
+      expect(clean).toMatchObject({ combo: 1, nextMistakePenalty: mistakePenalty(1, Difficulty.Medium), flawlessPossible: true, noteMarks: 0 });
+      expect(clean.nextDigitPoints).toBe(scoreEvents(run(createScore(), [correct(0)]), [correct(1)], CONTEXT).awards[0].points);
+      const afterMistake = scoreBreakdown(run(createScore(), wrong(0)), CONTEXT);
+      expect(afterMistake).toMatchObject({ flawlessPossible: false, nextMistakePenalty: mistakePenalty(2, Difficulty.Medium) });
+      expect(afterMistake.projectedSolve.map((award) => award.reason)).not.toContain(AwardReason.Flawless);
     });
   });
 });
