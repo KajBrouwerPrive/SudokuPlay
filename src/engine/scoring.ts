@@ -32,7 +32,7 @@ export const BASE_POINTS: Readonly<Record<Difficulty, number>> = {
  * are measured; hard and expert are estimates until they are measured too. */
 export const AVERAGE_TIME_MS: Readonly<Record<Difficulty, number>> = {
   [Difficulty.Easy]: 3 * 60_000,
-  [Difficulty.Medium]: 6 * 60_000,
+  [Difficulty.Medium]: 5 * 60_000,
   [Difficulty.Hard]: 12 * 60_000,
   [Difficulty.Expert]: 20 * 60_000,
 };
