@@ -168,11 +168,11 @@ describe("choreograph", () => {
     ]);
   });
 
-  it("shows a halving instead of a number for a hint, and squashes the counter", () => {
+  it("shows what a hint costs, and squashes the counter", () => {
     const cues = choreographAwards([{ reason: AwardReason.Hint, points: -40, cell: 3 }]);
     expect(cues.map((cue) => [cue.effect, cue.label ?? null, cue.delayMs])).toEqual([
-      [Effect.ScorePop, "÷2", LANDING_DELAY_MS],
-      [Effect.ScoreHalve, null, HINT_SPARKLE_LEAD_MS],
+      [Effect.ScorePop, "−40", LANDING_DELAY_MS],
+      [Effect.ScoreSquash, null, HINT_SPARKLE_LEAD_MS],
     ]);
   });
 

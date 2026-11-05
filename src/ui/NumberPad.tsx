@@ -18,10 +18,12 @@ interface NumberPadProps {
   onToggleNotes: () => void;
   /** True while the hint key waits for a second press to confirm. */
   hintConfirming: boolean;
+  /** What the next hint costs, already formatted; shown when asking to confirm it. */
+  hintCostLabel: string;
   onHint: () => void;
 }
 
-export function NumberPad({ remaining, notesMode, armedDigit, onDigit, onErase, onUndo, onRedo, onToggleNotes, hintConfirming, onHint }: NumberPadProps) {
+export function NumberPad({ remaining, notesMode, armedDigit, onDigit, onErase, onUndo, onRedo, onToggleNotes, hintConfirming, hintCostLabel, onHint }: NumberPadProps) {
   return (
     <div className={notesMode ? "pad pad--notes" : "pad"}>
       <div className="pad__tools">
@@ -49,7 +51,7 @@ export function NumberPad({ remaining, notesMode, armedDigit, onDigit, onErase, 
           onClick={onHint}
         >
           <BulbIcon />
-          <span>{hintConfirming ? "Zeker? ÷2" : "Hint"}</span>
+          <span>{hintConfirming ? `Zeker? ${hintCostLabel}` : "Hint"}</span>
         </button>
       </div>
       <div className="pad__digits">

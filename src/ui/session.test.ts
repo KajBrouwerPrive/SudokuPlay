@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CLASSIC_PUZZLE, CLASSIC_SOLUTION } from "../engine/__fixtures__/puzzles";
-import { AwardReason, Difficulty, EMPTY, countEmpty, digitPoints, GameEventType, GameStatus, parseGrid, type Digit, type Puzzle } from "../engine";
+import { AwardReason, Difficulty, EMPTY, countEmpty, digitPoints, GameEventType, hintPenalty, GameStatus, parseGrid, type Digit, type Puzzle } from "../engine";
 import { CommandType, Direction, type Command } from "./controls";
 import { GameOutcome } from "../stats/stats";
 import { EVENT_LOG_LIMIT, SessionActionType, createSession, isAbandonable, sessionReducer, toGameRecord, type Session } from "./session";
@@ -192,11 +192,11 @@ describe("sessionReducer", () => {
       expect(sessionReducer(arm(createSession(PUZZLE), 4), { type: SessionActionType.NewGame, puzzle: PUZZLE }).started).toBe(false);
     });
 
-    it("gives a hint in the selected cell and halves the points", () => {
+    it("gives a hint in the selected cell and charges its penalty", () => {
       let session = command(select(createSession(PUZZLE), 2), { type: CommandType.Input, digit: 4, asNote: false });
       session = command(select(session, 3), { type: CommandType.Hint });
       expect(session.game.values[3]).toBe(PUZZLE.solution[3]);
-      expect(session.score.points).toBe(FIRST_DIGIT_POINTS - Math.ceil(FIRST_DIGIT_POINTS / 2));
+      expect(session.score.points).toBe(FIRST_DIGIT_POINTS - hintPenalty(0, Difficulty.Easy));
       expect(session.lastBatch?.events[0].type).toBe(GameEventType.HintUsed);
     });
 

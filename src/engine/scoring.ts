@@ -1,9 +1,12 @@
 // Points, as a pure reducer over game events: `scoreEvents(score, events, context)` returns the
-// new score plus one award per change, which the UI animates ("+15", "÷2").
+// new score plus one award per change, which the UI animates ("+15", "−15").
 //
 // Rules: correct digits earn the level's base points times a combo multiplier that grows with
 // every correct digit in a row; completing a unit, a digit or the puzzle adds small bonuses. A
-// mistake costs more with every mistake and resets the combo; a hint halves positive points. Digit
+// mistake costs more with every mistake and resets the combo. A hint costs three quarters of what
+// the next mistake would: three quarters of its penalty and of the flawless bonus, whenever it is
+// taken, so it is cheaper than a mistake in every situation; it resets the combo and the hinted
+// digit earns nothing. Digit
 // points are scaled to a fixed number of open cells, so every puzzle of a level pays the same for
 // the same play. Points may go below zero during play, so an early mistake is not free.
 //
@@ -76,6 +79,9 @@ export const NOTES_BUDGET_PER_CELL: Readonly<Record<Difficulty, number>> = {
   [Difficulty.Hard]: 3.6,
   [Difficulty.Expert]: 4.5,
 };
+/** What a hint costs compared to a mistake: this share of the mistake penalty and of the flawless
+ * bonus. Two hints cost the whole flawless bonus. */
+export const HINT_COST_SHARE = 0.75;
 /** The n-th mistake costs n times this, in base points, up to the maximum per mistake. */
 export const MISTAKE_PENALTY_STEP = 10;
 export const MAX_MISTAKE_PENALTY = 30;
@@ -161,6 +167,19 @@ export function mistakePenalty(mistakeNumber: number, difficulty: Difficulty): n
   return Math.min(MISTAKE_PENALTY_STEP * mistakeNumber, MAX_MISTAKE_PENALTY) * BASE_POINTS[difficulty];
 }
 
+/** What a hint costs right away, in points: a share of what the next mistake would cost, so a
+ * hint is cheaper than a mistake in every situation. */
+export function hintPenalty(mistakes: number, difficulty: Difficulty): number {
+  return Math.round(mistakePenalty(mistakes + 1, difficulty) * HINT_COST_SHARE);
+}
+
+/** The flawless bonus still in reach: all of it without mistakes or hints, none after a mistake,
+ * and every hint takes a share of it. */
+export function flawlessBonus(mistakes: number, hints: number, difficulty: Difficulty): number {
+  const share = mistakes > 0 ? 0 : Math.max(0, 1 - hints * HINT_COST_SHARE);
+  return Math.round(FLAWLESS_BONUS * BASE_POINTS[difficulty] * share);
+}
+
 /** What a correct digit earns with this combo standing, scaled to the reference number of open
  * cells; unrounded, as the score carries the rounding from digit to digit. */
 export function digitPoints(combo: number, context: ScoreContext): number {
@@ -202,10 +221,21 @@ export function notesBonus(noteMarks: number, context: ScoreContext): number {
 export function solveAwards(score: Score, mistakes: number, context: ScoreContext): Award[] {
   const base = BASE_POINTS[context.difficulty];
   const awards: Award[] = [{ reason: AwardReason.Solve, points: base * SOLVE_BONUS, cell: null }];
-  if (mistakes === 0 && score.hints === 0) awards.push({ reason: AwardReason.Flawless, points: base * FLAWLESS_BONUS, cell: null });
+  awards.push({ reason: AwardReason.Flawless, points: flawlessBonus(mistakes, score.hints, context.difficulty), cell: null });
   awards.push({ reason: AwardReason.Speed, points: speedBonus(context), cell: null });
   awards.push({ reason: AwardReason.Notes, points: notesBonus(score.noteMarks.length, context), cell: null });
   return awards.filter((award) => award.points !== 0);
+}
+
+/** What the next mistake costs in all, not counting the combo it resets. */
+export function mistakeCost(score: Score, difficulty: Difficulty): number {
+  return mistakePenalty(score.mistakes + 1, difficulty) + flawlessBonus(score.mistakes, score.hints, difficulty);
+}
+
+/** What the next hint costs in all, not counting the combo it resets; shown before taking one. */
+export function hintCost(score: Score, difficulty: Difficulty): number {
+  const flawlessLost = flawlessBonus(score.mistakes, score.hints, difficulty) - flawlessBonus(score.mistakes, score.hints + 1, difficulty);
+  return hintPenalty(score.mistakes, difficulty) + flawlessLost;
 }
 
 /** Where the score stands and what solving right now would add: for the developer panel. */
@@ -223,7 +253,12 @@ export interface ScoreBreakdown {
   /** What the next mistake costs, as a positive number. */
   nextMistakePenalty: number;
   /** Whether the flawless bonus is still within reach. */
-  flawlessPossible: boolean;
+  /** The flawless bonus still in reach. */
+  flawlessRemaining: number;
+  /** What the next mistake costs in all: its penalty plus the flawless bonus it takes. */
+  nextMistakeCost: number;
+  /** What the next hint costs in all: its penalty plus the share of the flawless bonus it takes. */
+  nextHintCost: number;
   noteMarks: number;
   /** Distinct pencil marks at which the notes bonus reaches zero. */
   notesBudget: number;
@@ -244,7 +279,9 @@ export function scoreBreakdown(score: Score, context: ScoreContext): ScoreBreakd
     multiplier: multiplierFor(score.combo, context.openCells),
     nextDigitPoints: Math.round(digitPoints(score.combo, context) + score.digitRounding),
     nextMistakePenalty: mistakePenalty(score.mistakes + 1, context.difficulty),
-    flawlessPossible: score.mistakes === 0 && score.hints === 0,
+    flawlessRemaining: flawlessBonus(score.mistakes, score.hints, context.difficulty),
+    nextMistakeCost: mistakeCost(score, context.difficulty),
+    nextHintCost: hintCost(score, context.difficulty),
     noteMarks: score.noteMarks.length,
     notesBudget: notesBudget(context.openCells, context.difficulty),
     elapsedMs: context.elapsedMs,
@@ -275,8 +312,7 @@ export function scoreEvents(score: Score, events: readonly GameEvent[], context:
       case GameEventType.HintUsed:
         hintedCell = event.cell;
         next = { ...next, combo: 0, hints: next.hints + 1, paidCells: [...next.paidCells, event.cell] };
-        // Halving a negative score would raise it; a hint only costs when there is something to halve.
-        if (next.points > 0) award(AwardReason.Hint, -Math.ceil(next.points / 2), event.cell);
+        award(AwardReason.Hint, -hintPenalty(next.mistakes, context.difficulty), event.cell);
         break;
       case GameEventType.CellPlaced: {
         if (!event.correct || event.cell === hintedCell || next.paidCells.includes(event.cell)) break;

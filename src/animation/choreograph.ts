@@ -66,7 +66,6 @@ export function distance(from: number, to: number): number {
 
 const HINT_SPARKLE_LABEL = "✦";
 const MINUS_SIGN = "−";
-const HALVED_LABEL = "÷2";
 
 /** "+15" or "−15", with a real minus sign. */
 export function pointsLabel(points: number): string {
@@ -81,11 +80,11 @@ export function choreographAwards(awards: readonly Award[]): Cue[] {
   const scoreTarget = controlTarget(Control.Score);
   let bonusIndex = 0;
   const cues = awards.map((award): Cue => {
-    const label = award.reason === AwardReason.Hint ? HALVED_LABEL : pointsLabel(award.points);
+    const label = pointsLabel(award.points);
     if (award.cell !== null) return { effect: Effect.ScorePop, target: cellTarget(award.cell), delayMs: LANDING_DELAY_MS, label };
     return { effect: Effect.ScorePop, target: scoreTarget, delayMs: LANDING_DELAY_MS + AWARD_STAGGER_MS * bonusIndex++, label };
   });
-  if (awards.some((award) => award.reason === AwardReason.Hint)) cues.push({ effect: Effect.ScoreHalve, target: scoreTarget, delayMs: HINT_SPARKLE_LEAD_MS });
+  if (awards.some((award) => award.reason === AwardReason.Hint)) cues.push({ effect: Effect.ScoreSquash, target: scoreTarget, delayMs: HINT_SPARKLE_LEAD_MS });
   else if (awards.some((award) => award.points > 0)) cues.push({ effect: Effect.ScoreBump, target: scoreTarget, delayMs: LANDING_DELAY_MS });
   return cues;
 }
