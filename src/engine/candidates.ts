@@ -36,6 +36,15 @@ export function candidatesFor(grid: Grid, cell: number): CandidateMask {
   return ALL_CANDIDATES & ~used;
 }
 
+/** Every candidate of every empty cell: the pencil marks it takes to note a grid fully. */
+export function countAllCandidates(grid: Grid): number {
+  let total = 0;
+  for (let cell = 0; cell < CELL_COUNT; cell++) {
+    if (grid[cell] === EMPTY) total += countCandidates(candidatesFor(grid, cell));
+  }
+  return total;
+}
+
 export function computeAllCandidates(grid: Grid): Uint16Array {
   const candidates = new Uint16Array(CELL_COUNT);
   for (let cell = 0; cell < CELL_COUNT; cell++) candidates[cell] = candidatesFor(grid, cell);

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { CLASSIC_PUZZLE, CLASSIC_SOLUTION } from "../engine/__fixtures__/puzzles";
-import { AwardReason, Difficulty, EMPTY, countEmpty, digitPoints, GameEventType, hintPenalty, GameStatus, parseGrid, type Digit, type Puzzle } from "../engine";
+import { AwardReason, Difficulty, EMPTY, digitPoints, GameEventType, hintPenalty, GameStatus, parseGrid, type Digit, type Puzzle } from "../engine";
 import { CommandType, Direction, type Command } from "./controls";
 import { GameOutcome } from "../stats/stats";
-import { EVENT_LOG_LIMIT, SessionActionType, createSession, isAbandonable, sessionReducer, toGameRecord, type Session } from "./session";
+import { EVENT_LOG_LIMIT, SessionActionType, createSession, isAbandonable, scoreContext, sessionReducer, toGameRecord, type Session } from "./session";
 
 const PUZZLE: Puzzle = { puzzle: parseGrid(CLASSIC_PUZZLE), solution: parseGrid(CLASSIC_SOLUTION), difficulty: Difficulty.Easy, seed: 7 };
 /** The first correct digit's points, scaled to how many cells this puzzle leaves open. */
-const FIRST_DIGIT_POINTS = Math.round(digitPoints(0, { difficulty: Difficulty.Easy, elapsedMs: 0, openCells: countEmpty(PUZZLE.puzzle) }));
+const FIRST_DIGIT_POINTS = Math.round(digitPoints(0, scoreContext(createSession(PUZZLE).game, 0)));
 
 const command = (session: Session, value: Command) => sessionReducer(session, { type: SessionActionType.Command, command: value });
 const select = (session: Session, cell: number) => sessionReducer(session, { type: SessionActionType.Select, cell });

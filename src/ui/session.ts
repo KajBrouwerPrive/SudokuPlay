@@ -6,6 +6,7 @@ import {
   GameEventType,
   GameStatus,
   applyAction,
+  countAllCandidates,
   countEmpty,
   createGame,
   createScore,
@@ -19,6 +20,7 @@ import {
   type GameState,
   type Puzzle,
   type Score,
+  type ScoreContext,
 } from "../engine";
 import type { GameOutcome, GameRecord } from "../stats/stats";
 import { CommandType, inputAction, moveSelection, type Command } from "./controls";
@@ -108,16 +110,22 @@ function startsClock(action: GameAction, events: readonly GameEvent[]): boolean 
   return STARTING_ACTIONS.has(action.type) && events.some((event) => event.type !== GameEventType.MoveRejected);
 }
 
+/** What scoring needs to know about this puzzle and the play time so far. */
+export function scoreContext(game: GameState, elapsedMs: number): ScoreContext {
+  return {
+    difficulty: game.difficulty,
+    elapsedMs,
+    openCells: countEmpty(game.givens),
+    notesBudget: countAllCandidates(game.givens),
+  };
+}
+
 function play(session: Session, action: GameAction): Session {
   const { state, events } = applyAction(session.game, action);
   if (events.length === 0) return state === session.game ? session : { ...session, game: state };
   const started = session.started || startsClock(action, events);
   const logged = events.map((event, index) => ({ id: session.nextEventId + index, event })).reverse();
-  const { score, awards } = scoreEvents(session.score, events, {
-    difficulty: state.difficulty,
-    elapsedMs: session.elapsedMs,
-    openCells: countEmpty(state.givens),
-  });
+  const { score, awards } = scoreEvents(session.score, events, scoreContext(state, session.elapsedMs));
   return {
     ...session,
     game: state,

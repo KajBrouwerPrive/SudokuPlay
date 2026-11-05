@@ -53,9 +53,10 @@ export interface StatsSummary {
   totalMistakes: number;
   totalPoints: number;
   levels: LevelSummary[];
-  /** Solved games in a row, counting back from the latest game. */
-  solvedStreak: number;
-  bestSolvedStreak: number;
+  /** Flawless solves in a row, counting back from the latest game; a solve with a mistake or an
+   * abandoned game ends the streak. */
+  flawlessStreak: number;
+  bestFlawlessStreak: number;
   /** Days in a row with a solved game, ending today or yesterday. */
   dayStreak: number;
   /** Newest first. */
@@ -134,11 +135,16 @@ function dayStreak(solved: GameRecord[], today: Date): number {
   return streak;
 }
 
-function solvedStreaks(games: GameRecord[]): { current: number; best: number } {
+/** Solved without a single mistake; the same rule as the flawless solves count. */
+function isFlawlessSolve(game: GameRecord): boolean {
+  return game.outcome === GameOutcome.Solved && game.mistakes === 0;
+}
+
+function flawlessStreaks(games: GameRecord[]): { current: number; best: number } {
   let current = 0;
   let best = 0;
   for (const game of games) {
-    current = game.outcome === GameOutcome.Solved ? current + 1 : 0;
+    current = isFlawlessSolve(game) ? current + 1 : 0;
     best = Math.max(best, current);
   }
   return { current, best };
@@ -147,11 +153,11 @@ function solvedStreaks(games: GameRecord[]): { current: number; best: number } {
 export function summarize(data: StatsData, today: Date): StatsSummary {
   const { games } = data;
   const solved = games.filter((game) => game.outcome === GameOutcome.Solved);
-  const streaks = solvedStreaks(games);
+  const streaks = flawlessStreaks(games);
   return {
     gamesPlayed: games.length,
     gamesSolved: solved.length,
-    flawlessSolved: solved.filter((game) => game.mistakes === 0).length,
+    flawlessSolved: games.filter(isFlawlessSolve).length,
     totalMistakes: games.reduce((sum, game) => sum + game.mistakes, 0),
     totalPoints: solved.reduce((sum, game) => sum + game.points, 0),
     levels: DIFFICULTIES.map((difficulty) => {
@@ -168,8 +174,8 @@ export function summarize(data: StatsData, today: Date): StatsSummary {
         averageMistakes: level.length === 0 ? null : Math.round((level.reduce((sum, game) => sum + game.mistakes, 0) / level.length) * 10) / 10,
       };
     }),
-    solvedStreak: streaks.current,
-    bestSolvedStreak: streaks.best,
+    flawlessStreak: streaks.current,
+    bestFlawlessStreak: streaks.best,
     dayStreak: dayStreak(solved, today),
     recent: games.slice(-RECENT_COUNT).reverse(),
     scoreHistory: solved.slice(-SCORE_HISTORY_COUNT).map((game) => game.points),

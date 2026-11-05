@@ -84,11 +84,18 @@ describe("summarize", () => {
     expect(summary.levels.find((level) => level.difficulty === Difficulty.Medium)?.averageMistakes).toBeNull();
   });
 
-  it("counts solved games in a row, current and best", () => {
-    const solved = game();
+  it("counts flawless solves in a row, current and best", () => {
+    const flawless = game({ mistakes: 0 });
     const abandoned = game({ outcome: GameOutcome.Abandoned });
-    const summary = summarize(withGames(solved, solved, solved, abandoned, solved, solved), TODAY);
-    expect(summary).toMatchObject({ solvedStreak: 2, bestSolvedStreak: 3 });
+    const summary = summarize(withGames(flawless, flawless, flawless, abandoned, flawless, flawless), TODAY);
+    expect(summary).toMatchObject({ flawlessStreak: 2, bestFlawlessStreak: 3 });
+  });
+
+  it("ends the flawless streak with a solve that had a mistake", () => {
+    const flawless = game({ mistakes: 0 });
+    const withMistake = game({ mistakes: 1 });
+    const summary = summarize(withGames(flawless, flawless, withMistake, flawless), TODAY);
+    expect(summary).toMatchObject({ flawlessStreak: 1, bestFlawlessStreak: 2 });
   });
 
   it("counts days in a row with a solve, still alive when the last one was yesterday", () => {

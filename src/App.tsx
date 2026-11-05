@@ -13,7 +13,7 @@ import { formatDuration, formatMultiplier, formatPoints } from "./ui/format";
 import { ChartIcon } from "./ui/Icons";
 import { NumberPad } from "./ui/NumberPad";
 import { ScoreBreakdownPanel } from "./ui/ScoreBreakdownPanel";
-import { SessionActionType, createSession, isAbandonable, isClockRunning, sessionReducer, toGameRecord, type Session } from "./ui/session";
+import { SessionActionType, createSession, isAbandonable, isClockRunning, scoreContext, sessionReducer, toGameRecord, type Session } from "./ui/session";
 import { StatsPage } from "./ui/StatsPage";
 import { useHintConfirm } from "./ui/useHintConfirm";
 import { usePlayTimer } from "./ui/usePlayTimer";
@@ -73,7 +73,7 @@ export function App() {
   const openCells = useMemo(() => countEmpty(game.givens), [game.givens]);
   const multiplier = multiplierFor(score.combo, openCells);
   // Only the developer panel uses it; recomputed every tick so the time bonus counts down live.
-  const breakdown = import.meta.env.DEV ? scoreBreakdown(score, { difficulty: game.difficulty, elapsedMs, openCells }) : null;
+  const breakdown = import.meta.env.DEV ? scoreBreakdown(score, scoreContext(game, elapsedMs)) : null;
 
   // The page has two views; the game stays mounted (hidden) on the stats page, so nothing is lost.
   const [view, setView] = useState<View>(viewFromUrl);

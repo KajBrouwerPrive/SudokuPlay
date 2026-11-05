@@ -16,7 +16,8 @@
 // lost flawless bonus). The speed bonus is built around the average solve time per level: full up
 // to half the average, then halving with every half the average slower, so an average solve earns
 // half of it and a second saved is worth most for a fast solve.
-// The notes bonus shrinks with every distinct pencil mark placed. Marks count when placed and are
+// The notes bonus shrinks with every distinct pencil mark placed, down to zero at the candidates of
+// the starting grid: fully noting the puzzle earns nothing. Marks count when placed and are
 // never taken back, so erasing or undoing them does not restore the bonus. Every cell, unit and
 // digit pays out once, so undo and replay cannot farm points, and like mistakes, penalties are
 // never undone.
@@ -68,17 +69,9 @@ export const SOLVE_BONUS = 10;
 export const FLAWLESS_BONUS = 110;
 /** The speed bonus at or below the top time; it halves with every half-life slower. */
 export const MAX_SPEED_BONUS = 105;
-/** The notes bonus for a solve without pencil marks; it shrinks linearly to zero at the budget. */
+/** The notes bonus for a solve without pencil marks; it shrinks linearly to zero at the budget:
+ * the candidates of the starting grid (`countAllCandidates`), what fully noting this puzzle takes. */
 export const MAX_NOTES_BONUS = 75;
-/** Distinct pencil marks per open cell at which the notes bonus reaches zero: about what fully
- * noting the puzzle takes, which grows with the level. Hard is measured (a fully noted hard puzzle
- * took about 200 marks for 56 open cells); medium and expert are estimates until measured. */
-export const NOTES_BUDGET_PER_CELL: Readonly<Record<Difficulty, number>> = {
-  [Difficulty.Easy]: 2,
-  [Difficulty.Medium]: 3,
-  [Difficulty.Hard]: 3.6,
-  [Difficulty.Expert]: 4.5,
-};
 /** What a hint costs compared to a mistake: this share of the mistake penalty and of the flawless
  * bonus. Two hints cost the whole flawless bonus. */
 export const HINT_COST_SHARE = 0.75;
@@ -132,6 +125,9 @@ export interface ScoreContext {
   elapsedMs: number;
   /** Cells the puzzle left open at the start, to scale digit points to the reference. */
   openCells: number;
+  /** Distinct pencil marks at which the notes bonus reaches zero: every candidate of the starting
+   * grid, so fully noting the puzzle earns nothing and noting half of it earns half. */
+  notesBudget: number;
 }
 
 const zeroByReason = (): Record<AwardReason, number> =>
@@ -205,15 +201,9 @@ export function noteKey(cell: number, digit: Digit): number {
   return cell * DIGITS.length + (digit - 1);
 }
 
-/** Distinct pencil marks at which the notes bonus reaches zero, for this level and puzzle. */
-export function notesBudget(openCells: number, difficulty: Difficulty): number {
-  return Math.round(NOTES_BUDGET_PER_CELL[difficulty] * Math.max(1, openCells));
-}
-
-/** The notes bonus for this many distinct pencil marks, scaled to the puzzle's open cells. */
+/** The notes bonus for this many distinct pencil marks, against the puzzle's own budget. */
 export function notesBonus(noteMarks: number, context: ScoreContext): number {
-  const budget = notesBudget(context.openCells, context.difficulty);
-  const share = 1 - noteMarks / budget;
+  const share = 1 - noteMarks / Math.max(1, context.notesBudget);
   return Math.max(0, Math.round(MAX_NOTES_BONUS * BASE_POINTS[context.difficulty] * share));
 }
 
@@ -283,7 +273,7 @@ export function scoreBreakdown(score: Score, context: ScoreContext): ScoreBreakd
     nextMistakeCost: mistakeCost(score, context.difficulty),
     nextHintCost: hintCost(score, context.difficulty),
     noteMarks: score.noteMarks.length,
-    notesBudget: notesBudget(context.openCells, context.difficulty),
+    notesBudget: context.notesBudget,
     elapsedMs: context.elapsedMs,
     averageTimeMs: AVERAGE_TIME_MS[context.difficulty],
     topTimeMs: SPEED_TOP_TIME_MS[context.difficulty],
