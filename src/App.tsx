@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Control } from "./animation/choreograph";
 import { useAnimations, usePrefersReducedMotion } from "./animation/useAnimations";
-import { DIFFICULTIES, Difficulty, GameEventType, GameStatus, countEmpty, createPuzzle, multiplierFor, remainingByDigit, type Digit } from "./engine";
+import { DIFFICULTIES, Difficulty, GameEventType, GameStatus, countEmpty, createPuzzle, multiplierFor, remainingByDigit, scoreBreakdown, type Digit } from "./engine";
 import { GameOutcome } from "./stats/stats";
 import { loadStats, recordGame } from "./stats/storage";
 import { Board } from "./ui/Board";
@@ -12,6 +12,7 @@ import { DevPanel } from "./ui/DevPanel";
 import { formatDuration, formatMultiplier, formatPoints } from "./ui/format";
 import { ChartIcon } from "./ui/Icons";
 import { NumberPad } from "./ui/NumberPad";
+import { ScoreBreakdownPanel } from "./ui/ScoreBreakdownPanel";
 import { SessionActionType, createSession, isAbandonable, sessionReducer, toGameRecord, type Session } from "./ui/session";
 import { StatsPage } from "./ui/StatsPage";
 import { useHintConfirm } from "./ui/useHintConfirm";
@@ -69,7 +70,10 @@ export function App() {
   const onElapsed = useCallback((ms: number) => dispatch({ type: SessionActionType.Tick, elapsedMs: ms }), []);
   const giveHint = useCallback(() => dispatch({ type: SessionActionType.Command, command: { type: CommandType.Hint } }), []);
   const hint = useHintConfirm(giveHint);
-  const multiplier = multiplierFor(score.combo, countEmpty(game.givens));
+  const openCells = useMemo(() => countEmpty(game.givens), [game.givens]);
+  const multiplier = multiplierFor(score.combo, openCells);
+  // Only the developer panel uses it; recomputed every tick so the time bonus counts down live.
+  const breakdown = import.meta.env.DEV ? scoreBreakdown(score, { difficulty: game.difficulty, elapsedMs, openCells }) : null;
 
   // The page has two views; the game stays mounted (hidden) on the stats page, so nothing is lost.
   const [view, setView] = useState<View>(viewFromUrl);
@@ -224,6 +228,7 @@ export function App() {
           N notitiemodus, pijltjes bewegen, Backspace wissen, Ctrl+Z / Ctrl+Y.
         </p>
 
+        {breakdown && <ScoreBreakdownPanel breakdown={breakdown} solved={game.status === GameStatus.Solved} />}
         {import.meta.env.DEV && <DevPanel game={game} selected={selected} log={log} playEvents={playEvents} setTimeScale={setTimeScale} />}
       </main>
     </>
