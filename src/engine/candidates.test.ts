@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { CLASSIC_PUZZLE } from "./__fixtures__/puzzles";
+import { CLASSIC_PUZZLE, CLASSIC_SOLUTION } from "./__fixtures__/puzzles";
 import {
   ALL_CANDIDATES,
   NO_CANDIDATES,
   candidateDigits,
   candidatesFor,
   computeAllCandidates,
+  countAllCandidates,
   countCandidates,
   digitBit,
   hasCandidate,
@@ -46,5 +47,16 @@ describe("candidatesFor", () => {
     const grid = parseGrid(CLASSIC_PUZZLE);
     const all = computeAllCandidates(grid);
     for (let cell = 0; cell < all.length; cell++) expect(all[cell]).toBe(candidatesFor(grid, cell));
+  });
+});
+
+describe("countAllCandidates", () => {
+  it("counts every candidate of every empty cell, and nothing for filled cells", () => {
+    expect(countAllCandidates(createEmptyGrid())).toBe(81 * 9);
+    expect(countAllCandidates(parseGrid(CLASSIC_SOLUTION))).toBe(0);
+    const grid = parseGrid(CLASSIC_PUZZLE);
+    const all = computeAllCandidates(grid);
+    const expected = [...grid.keys()].filter((cell) => grid[cell] === 0).reduce((sum, cell) => sum + countCandidates(all[cell]), 0);
+    expect(countAllCandidates(grid)).toBe(expected);
   });
 });
