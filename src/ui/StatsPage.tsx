@@ -98,6 +98,7 @@ export function StatsPage({ stats, difficultyLabels, reducedMotion, onBack }: St
                     <th scope="col">Niveau</th>
                     <th scope="col">Punten</th>
                     <th scope="col">Fouten</th>
+                    <th scope="col">Hints</th>
                     <th scope="col">Tijd</th>
                     <th scope="col">
                       <span className="visually-hidden">Uitkomst</span>
@@ -111,6 +112,7 @@ export function StatsPage({ stats, difficultyLabels, reducedMotion, onBack }: St
                       <td>{difficultyLabels[game.difficulty]}</td>
                       <td className="stats__number">{formatPoints(game.points)}</td>
                       <td className={game.mistakes > 0 ? "stats__number stats__mistakes" : "stats__number"}>{game.mistakes}</td>
+                      <td className="stats__number">{game.hints}</td>
                       <td className="stats__number">{formatDuration(game.durationMs)}</td>
                       <td className="stats__outcome" title={OUTCOME_LABELS[game.outcome]}>
                         <span aria-hidden="true">{OUTCOME_MARKS[game.outcome]}</span>
