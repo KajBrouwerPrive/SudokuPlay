@@ -53,7 +53,7 @@ export function StatsPage({ stats, difficultyLabels, reducedMotion, onBack }: St
             <Tile label={`opgelost van ${summary.gamesPlayed}`} value={summary.gamesSolved} reducedMotion={reducedMotion} />
             <Tile label={`foutloos opgelost (${formatMistakes(summary.totalMistakes)} fouten totaal)`} value={summary.flawlessSolved} reducedMotion={reducedMotion} />
             <Tile label={summary.dayStreak === 1 ? "dag op rij" : "dagen op rij"} value={summary.dayStreak} reducedMotion={reducedMotion} />
-            <Tile label={`op rij opgelost (record ${summary.bestSolvedStreak})`} value={summary.solvedStreak} reducedMotion={reducedMotion} />
+            <Tile label={`foutloos op rij (record ${summary.bestFlawlessStreak})`} value={summary.flawlessStreak} reducedMotion={reducedMotion} />
           </section>
 
           <section className="stats__section">
