@@ -8,11 +8,14 @@
 // puzzle of a level pays the same for the same play, and time is what sets two clean solves apart.
 // Mistakes weigh more than slowness: the first one costs more than half the speed bonus (penalty
 // plus the lost flawless bonus), two cost more than all of it. Points may go below zero
-// during play, so an early mistake is not free. Every cell, unit and digit pays out once, so undo
+// during play, so an early mistake is not free.
+// Solving without pencil marks earns a notes bonus that shrinks with every distinct mark placed;
+// it weighs a little less than the speed bonus. Marks count when placed and are never taken back,
+// so erasing or undoing them does not restore the bonus. Every cell, unit and digit pays out once, so undo
 // and replay cannot farm points, and like mistakes, penalties are never undone.
 import { GameEventType, type GameEvent } from "./game";
 import { Difficulty } from "./grader";
-import type { Digit, Unit } from "./grid";
+import { DIGITS, type Digit, type Unit } from "./grid";
 
 export const BASE_POINTS: Readonly<Record<Difficulty, number>> = {
   [Difficulty.Easy]: 10,
@@ -44,6 +47,10 @@ export const SOLVE_BONUS = 20;
 export const FLAWLESS_BONUS = 10;
 /** The speed bonus for an instant solve; it shrinks linearly to zero at the target time. */
 export const MAX_SPEED_BONUS = 30;
+/** The notes bonus for a solve without pencil marks; it shrinks linearly to zero at the budget. */
+export const MAX_NOTES_BONUS = 20;
+/** Distinct pencil marks per open cell at which the notes bonus reaches zero. */
+export const NOTES_BUDGET_PER_CELL = 2;
 /** The n-th mistake costs n times this, in base points, up to the maximum per mistake. */
 export const MISTAKE_PENALTY_STEP = 10;
 export const MAX_MISTAKE_PENALTY = 30;
@@ -55,6 +62,7 @@ export const AwardReason = {
   Solve: "solve",
   Flawless: "flawless",
   Speed: "speed",
+  Notes: "notes",
   Mistake: "mistake",
   Hint: "hint",
 } as const;
@@ -78,6 +86,8 @@ export interface Score {
   paidCells: readonly number[];
   paidUnits: readonly string[];
   paidDigits: readonly Digit[];
+  /** Every distinct pencil mark ever placed, as `noteKey(cell, digit)`. */
+  noteMarks: readonly number[];
   /** The rounding the digit points so far left over, carried into the next digit so scaled
    * points add up to the same total on every puzzle. */
   digitRounding: number;
@@ -92,7 +102,7 @@ export interface ScoreContext {
 }
 
 export function createScore(): Score {
-  return { points: 0, combo: 0, mistakes: 0, hints: 0, paidCells: [], paidUnits: [], paidDigits: [], digitRounding: 0 };
+  return { points: 0, combo: 0, mistakes: 0, hints: 0, paidCells: [], paidUnits: [], paidDigits: [], noteMarks: [], digitRounding: 0 };
 }
 
 /** The multiplier the next correct digit earns with this combo already standing. */
@@ -124,6 +134,18 @@ export function speedBonus(context: ScoreContext): number {
   return Math.max(0, Math.round(MAX_SPEED_BONUS * BASE_POINTS[context.difficulty] * share));
 }
 
+/** Identifies one pencil mark: a digit in a cell. */
+export function noteKey(cell: number, digit: Digit): number {
+  return cell * DIGITS.length + (digit - 1);
+}
+
+/** The notes bonus for this many distinct pencil marks, scaled to the puzzle's open cells. */
+export function notesBonus(noteMarks: number, context: ScoreContext): number {
+  const budget = NOTES_BUDGET_PER_CELL * Math.max(1, context.openCells);
+  const share = 1 - noteMarks / budget;
+  return Math.max(0, Math.round(MAX_NOTES_BONUS * BASE_POINTS[context.difficulty] * share));
+}
+
 export function scoreEvents(score: Score, events: readonly GameEvent[], context: ScoreContext): { score: Score; awards: Award[] } {
   const base = BASE_POINTS[context.difficulty];
   const awards: Award[] = [];
@@ -152,6 +174,11 @@ export function scoreEvents(score: Score, events: readonly GameEvent[], context:
         next = { ...next, combo: next.combo + 1, paidCells: [...next.paidCells, event.cell], digitRounding: exact - points };
         break;
       }
+      case GameEventType.NoteToggled: {
+        const key = noteKey(event.cell, event.digit);
+        if (event.added && !next.noteMarks.includes(key)) next = { ...next, noteMarks: [...next.noteMarks, key] };
+        break;
+      }
       case GameEventType.MistakeMade:
         next = { ...next, combo: 0, mistakes: next.mistakes + 1 };
         award(AwardReason.Mistake, -mistakePenalty(next.mistakes, context.difficulty), event.cell);
@@ -170,6 +197,7 @@ export function scoreEvents(score: Score, events: readonly GameEvent[], context:
         award(AwardReason.Solve, base * SOLVE_BONUS);
         if (event.mistakes === 0 && next.hints === 0) award(AwardReason.Flawless, base * FLAWLESS_BONUS);
         award(AwardReason.Speed, speedBonus(context));
+        award(AwardReason.Notes, notesBonus(next.noteMarks.length, context));
         break;
       default:
         break;

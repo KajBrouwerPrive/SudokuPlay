@@ -8,9 +8,11 @@ import {
   DIGIT_BONUS,
   FLAWLESS_BONUS,
   MAX_MULTIPLIER,
+  MAX_NOTES_BONUS,
   MAX_MISTAKE_PENALTY,
   MAX_SPEED_BONUS,
   MISTAKE_PENALTY_STEP,
+  NOTES_BUDGET_PER_CELL,
   REFERENCE_OPEN_CELLS,
   SOLVE_BONUS,
   TARGET_TIME_MS,
@@ -18,6 +20,7 @@ import {
   createScore,
   mistakePenalty,
   multiplierFor,
+  notesBonus,
   scoreEvents,
   speedBonus,
   type Score,
@@ -120,14 +123,15 @@ describe("scoring", () => {
       [AwardReason.Solve, BASE * SOLVE_BONUS],
       [AwardReason.Flawless, BASE * FLAWLESS_BONUS],
       [AwardReason.Speed, (BASE * MAX_SPEED_BONUS) / 2],
+      [AwardReason.Notes, BASE * MAX_NOTES_BONUS],
     ]);
   });
 
   it("skips the flawless bonus after a mistake or a hint", () => {
     const solvedWithMistake = scoreEvents(createScore(), [{ type: GameEventType.PuzzleSolved, mistakes: 1 }], CONTEXT);
-    expect(solvedWithMistake.awards.map((award) => award.reason)).toEqual([AwardReason.Solve]);
+    expect(solvedWithMistake.awards.map((award) => award.reason)).toEqual([AwardReason.Solve, AwardReason.Notes]);
     const hinted = { ...createScore(), hints: 1 };
-    expect(scoreEvents(hinted, [{ type: GameEventType.PuzzleSolved, mistakes: 0 }], CONTEXT).awards.map((award) => award.reason)).toEqual([AwardReason.Solve]);
+    expect(scoreEvents(hinted, [{ type: GameEventType.PuzzleSolved, mistakes: 0 }], CONTEXT).awards.map((award) => award.reason)).toEqual([AwardReason.Solve, AwardReason.Notes]);
   });
 
   it("pays every puzzle of a level about the same for the same clean play, however many cells it leaves open", () => {
@@ -160,5 +164,44 @@ describe("scoring", () => {
     expect(speedBonus(CONTEXT)).toBe(0);
     expect(speedBonus({ ...CONTEXT, elapsedMs: CONTEXT.elapsedMs * 3 })).toBe(0);
     expect(speedBonus({ ...CONTEXT, elapsedMs: 0 })).toBe(BASE * MAX_SPEED_BONUS);
+  });
+
+  describe("notes bonus", () => {
+    const note = (cell: number, digit: Digit, added = true): GameEvent => ({ type: GameEventType.NoteToggled, cell, digit, added });
+    const solved: GameEvent = { type: GameEventType.PuzzleSolved, mistakes: 0 };
+    const notesAward = (score: Score) => scoreEvents(score, [solved], CONTEXT).awards.find((award) => award.reason === AwardReason.Notes)?.points ?? 0;
+    const budget = NOTES_BUDGET_PER_CELL * REFERENCE_OPEN_CELLS;
+
+    it("pays the full bonus for a solve without pencil marks", () => {
+      expect(notesAward(createScore())).toBe(BASE * MAX_NOTES_BONUS);
+    });
+
+    it("pays less for every distinct mark, down to zero at the budget", () => {
+      let previous = notesBonus(0, CONTEXT);
+      for (let marks = 1; marks <= budget; marks++) {
+        const bonus = notesBonus(marks, CONTEXT);
+        expect(bonus).toBeLessThan(previous);
+        previous = bonus;
+      }
+      expect(notesBonus(budget, CONTEXT)).toBe(0);
+      expect(notesBonus(budget * 3, CONTEXT)).toBe(0);
+    });
+
+    it("counts each mark once and never gives one back when it is removed", () => {
+      const score = run(createScore(), [note(0, 1)], [note(0, 1, false)], [note(0, 1)], [note(0, 1, false)]);
+      expect(score.noteMarks).toHaveLength(1);
+      expect(notesAward(score)).toBe(notesBonus(1, CONTEXT));
+      expect(run(score, [note(0, 2)], [note(1, 1)]).noteMarks).toHaveLength(3);
+    });
+
+    it("scales the budget to the puzzle's open cells", () => {
+      const wide = { ...CONTEXT, openCells: REFERENCE_OPEN_CELLS * 2 };
+      expect(notesBonus(budget, wide)).toBe(Math.round((BASE * MAX_NOTES_BONUS) / 2));
+    });
+
+    it("weighs a little less than speed", () => {
+      expect(MAX_NOTES_BONUS).toBeLessThan(MAX_SPEED_BONUS);
+      expect(MAX_NOTES_BONUS).toBeGreaterThanOrEqual(MAX_SPEED_BONUS / 2);
+    });
   });
 });
