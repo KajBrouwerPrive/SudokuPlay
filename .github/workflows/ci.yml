@@ -1,28 +1,51 @@
-# Runs the repo's check (lint, type check, tests) and a production build on every pull request
-# and on pushes to main. A newer push to the same branch cancels the run still in progress.
 name: CI
 
+# Runs the repo's check (lint, type check, tests), a production build and the shared security scans.
+# Actions minutes are billed per job, rounded up to a whole minute, so this workflow keeps the
+# number of jobs and runs small:
+#  - pull_request: every PR runs the job.
+#  - workflow_dispatch: a manual run ("Run workflow"), e.g. to check main itself.
+# There is no run on a push to main: the PR run already tested the same code, and the repo owner
+# updates a branch that is behind main before merging.
 on:
   pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
+# A new push to a PR branch cancels that PR's running checks. Manual runs are never cancelled.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
+  # dorny/paths-filter reads the changed files of a PR through the API.
+  pull-requests: read
 
 jobs:
   check:
     name: Check and build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The security scans at the end need the PR's base commit and the commits in between.
+          fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      # Decides whether code changed, for the Semgrep step at the end: a file counts as code unless
+      # it is documentation (`every`: it must match all patterns).
+      - id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           # Vite 8 needs Node 20.19+ or 22.12+; 22 matches local development.
           node-version: 22
@@ -36,3 +59,66 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+      # <!-- baseline:security-scans -->
+      # Security scans, shared baseline (Pro-Solutio/control, block workflow:ci-security-steps; CNT-6).
+      # Steps of this job rather than jobs of their own, because every job is billed as at least a
+      # whole minute. They run on PRs only, after the other steps (also when one of those failed),
+      # and need the checkout above with fetch-depth 0 and a paths filter step with id `filter`.
+      # The scanners are CLIs with a fixed version and checksum: the organisation only allows its own
+      # and GitHub's Actions, and the Gitleaks Action needs a licence key for an organisation.
+      # Every branch and the whole history are scanned weekly by history-scan.yml in Pro-Solutio/control.
+      - name: Gitleaks, the commits of this PR
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/gitleaks.tar.gz"
+          curl -sSfL -o "$archive" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  ${archive}" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/gitleaks"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/gitleaks" gitleaks
+          "$RUNNER_TEMP/gitleaks/gitleaks" git --redact --verbose --exit-code 1 --log-opts="${BASE_SHA}..${HEAD_SHA}" .
+
+      # Semgrep CE with the registry ruleset p/default, only when code changed, and reporting only the
+      # findings this PR adds (--baseline-commit). The image is pinned by version and digest.
+      - name: Semgrep CE, new findings only
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.filter.outputs.code == 'true' }}
+        env:
+          SEMGREP_IMAGE: semgrep/semgrep:1.181.0@sha256:81474464c1f07483ba0682a44787fd93c91397419762a04abe2bafaae396304b
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD:/src" -w /src -e BASE_SHA "$SEMGREP_IMAGE" sh -c 'git config --global --add safe.directory /src && semgrep scan --config p/default --metrics off --error --baseline-commit "$BASE_SHA"'
+
+      # npm audit reads package.json and package-lock.json only. Each directory is audited at the PR
+      # head and at the PR base; only high or critical advisories that are new in the head fail the
+      # step, so advisories already on main do not block every PR.
+      - name: npm audit, new high and critical advisories only
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          NPM_AUDIT_DIRS: .
+        run: |
+          set -euo pipefail
+          status=0
+          for dir in $NPM_AUDIT_DIRS; do
+            base="$RUNNER_TEMP/npm-audit-base/$dir"
+            mkdir -p "$base"
+            echo '{}' > "$RUNNER_TEMP/npm-audit-base.json"
+            if git cat-file -e "${BASE_SHA}:${dir}/package-lock.json" 2>/dev/null; then
+              git show "${BASE_SHA}:${dir}/package.json" > "$base/package.json"
+              git show "${BASE_SHA}:${dir}/package-lock.json" > "$base/package-lock.json"
+              (cd "$base" && npm audit --json > "$RUNNER_TEMP/npm-audit-base.json") || true
+            fi
+            (cd "$dir" && npm audit --json > "$RUNNER_TEMP/npm-audit-head.json") || true
+            # The comparison is the shared script of block file:audit-diff (CNT-177), the same one the
+            # deno.lock scan of the Edge Functions uses.
+            node .github/scripts/audit-diff.mjs npm-audit "$RUNNER_TEMP/npm-audit-base.json" "$RUNNER_TEMP/npm-audit-head.json" "$dir" || status=1
+          done
+          exit $status
+      #<!-- /baseline -->

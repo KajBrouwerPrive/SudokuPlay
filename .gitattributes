@@ -1,1 +1,19 @@
+# Every text file is LF in the repository and in the working tree, regardless of
+# core.autocrlf. Without this, a Windows checkout writes CRLF and tools that
+# rewrite files with LF (snapshot writers, formatters) leave them looking modified.
 * text=auto eol=lf
+
+# Shell scripts must keep LF endings or bash fails on Windows checkouts
+*.sh text eol=lf
+
+# Windows batch files need CRLF to run reliably
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary assets: never touch the bytes
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.icns binary
