@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EFFECTS, Effect, durationFor, resolveTokens } from "./effects";
+import { EFFECTS, Effect, EffectPart, durationFor, resolveTokens } from "./effects";
 
 /** Properties that move or resize something; reduced motion must not use them. */
 const MOTION_PROPERTIES = ["transform", "translate", "rotate", "scale", "left", "top", "width", "height"];
@@ -29,6 +29,19 @@ describe("effect specs", () => {
 
   it("keeps reduced effects short", () => {
     for (const effect of allEffects) expect(durationFor(effect, true)).toBeLessThanOrEqual(durationFor(effect, false));
+  });
+});
+
+describe("digit visibility", () => {
+  const valueEffects = allEffects.filter((effect) => EFFECTS[effect].part === EffectPart.Value);
+
+  // A digit on a same-digit tile must never stay hidden: an effect that starts at opacity 0
+  // names its end opacity explicitly instead of relying on the underlying style.
+  it.each(valueEffects)("%s that starts hidden ends fully visible", (effect) => {
+    for (const frames of [EFFECTS[effect].keyframes, EFFECTS[effect].reducedKeyframes ?? []]) {
+      const opacities = frames.map((frame) => frame.opacity);
+      if (opacities.length > 0 && Number(opacities[0]) === 0) expect(Number(opacities[opacities.length - 1])).toBe(1);
+    }
   });
 });
 
