@@ -26,5 +26,5 @@ A playful sudoku web app (PWA): Vite + React + TypeScript.
 - Conventional commits, branch names `feat/...`, `fix/...`, `refactor/...`.
 
 ## Issues
-- Tracked in the IssueTracker (`mcp__issues__*`). Project key: to be set once the project exists.
+- Tracked in the IssueTracker (`mcp__issues__*`). Project key: `SDK` (organisation Prive).
 - Write tickets in Dutch; keep identifiers, paths and commands in backticks.
