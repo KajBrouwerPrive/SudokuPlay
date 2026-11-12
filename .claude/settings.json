@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm ci)",
+      "PowerShell(npm ci)",
+      "Bash(npm ci *)",
+      "PowerShell(npm ci *)",
+      "Bash(node C:/Development/control/scripts/agent-ready/agent-ready.mjs *)",
+      "PowerShell(node C:/Development/control/scripts/agent-ready/agent-ready.mjs *)"
+    ],
+    "deny": [
+      "Bash(gh pr merge *)",
+      "Bash(git push * main)",
+      "Bash(git push * main *)",
+      "Bash(git push *:main)",
+      "Bash(git push *:refs/heads/main)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git push *--force*)",
+      "Bash(git push * -f)",
+      "Bash(git push * +*)",
+      "PowerShell(gh pr merge *)",
+      "PowerShell(git push * main)",
+      "PowerShell(git push * main *)",
+      "PowerShell(git push *:main)",
+      "PowerShell(git push *:refs/heads/main)",
+      "PowerShell(git push --force *)",
+      "PowerShell(git push -f *)",
+      "PowerShell(git push *--force*)",
+      "PowerShell(git push * -f)",
+      "PowerShell(git push * +*)",
+      "Edit(//**/.claude/settings*.json)",
+      "Edit(//**/.mcp.json)",
+      "Edit(//**/.husky/**)",
+      "Edit(//**/.git/hooks/**)",
+      "Edit(~/.claude/settings*.json)",
+      "Edit(~/.claude/hooks/**)",
+      "Edit(~/.claude/skills/**)"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+# Baseline CODEOWNERS for a public repo (CNT-11). Checked only for repos with `visibility: public`
+# in baseline/repos.json. On a public repo anyone can open a PR from a fork; everything that steers
+# agents or CI must be reviewed by the owner, so the ruleset's "Require review from Code Owners" applies.
+# `@kajbrouwer` must be the real GitHub login of the owner: GitHub silently ignores a CODEOWNERS rule
+# with an unknown handle, which switches the code owner review off without any error.
+/.claude/ @kajbrouwer
+/.github/ @kajbrouwer
+/CLAUDE.md @kajbrouwer
+/AGENTS.md @kajbrouwer
