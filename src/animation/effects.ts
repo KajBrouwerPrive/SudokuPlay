@@ -119,7 +119,7 @@ export const EFFECTS: Readonly<Record<Effect, EffectSpec>> = {
       { transform: "scale(1.3, 0.8)", opacity: 1, offset: 0.4 },
       { transform: "scale(0.9, 1.12)", offset: 0.65 },
       { transform: "scale(1.04, 0.97)", offset: 0.85 },
-      { transform: "scale(1)" },
+      { transform: "scale(1)", opacity: 1 },
     ],
     reducedKeyframes: fadeIn,
   },
@@ -127,7 +127,7 @@ export const EFFECTS: Readonly<Record<Effect, EffectSpec>> = {
     part: EffectPart.Value,
     durationMs: 240,
     easing: EASE_OUT,
-    keyframes: [{ transform: "scale(0.6)", opacity: 0 }, { transform: "scale(1.05)", opacity: 1, offset: 0.6 }, { transform: "scale(1)" }],
+    keyframes: [{ transform: "scale(0.6)", opacity: 0 }, { transform: "scale(1.05)", opacity: 1, offset: 0.6 }, { transform: "scale(1)", opacity: 1 }],
     reducedKeyframes: fadeIn,
   },
   [Effect.Ring]: {
